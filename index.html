@@ -229,6 +229,19 @@
         
         let currentFilter = 'all'; 
         let maxDurationMinutes = 0; 
+        let authExpired = false;
+
+        // ─── トークン切れ(401)を検知した時の共通処理 ───
+        function handleExpiredToken() {
+            if (authExpired) return;
+            authExpired = true;
+            accessToken = null;
+            sessionStorage.removeItem('yt_oauth_token');
+            showUi(false);
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.style.display = 'none';
+            alert('Googleとの連携の有効期限が切れました。もう一度「Google連携」からログインしてください。');
+        }
 
         const FILTER_KEYWORDS = {
             endra: ['エンドラ', 'endra', '軍艦'],
@@ -389,6 +402,7 @@
                 callback: (tokenResponse) => {
                     if (tokenResponse && tokenResponse.access_token) {
                         accessToken = tokenResponse.access_token;
+                        authExpired = false;
                         sessionStorage.setItem('yt_oauth_token', accessToken);
                         showUi(true);
                         refreshFeed();
@@ -445,7 +459,7 @@
                 if (!subItems) {
                     const subUrl = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50`;
                     const subRes = await fetch(subUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                    if (subRes.status === 401) { handleSignoutClick(); return; }
+                    if (subRes.status === 401) { handleExpiredToken(); return; }
                     const subData = await subRes.json();
                     if (!subData.items) { statusEl.innerText = 'チャンネルが見つかりません。'; return; }
                     subItems = subData.items;
@@ -468,6 +482,7 @@
                     const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=3`;
                     try {
                         const res = await fetch(playlistUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                        if (res.status === 401) { handleExpiredToken(); return []; }
                         const data = await res.json();
                         const ids = data.items ? data.items.map(i => i.snippet.resourceId.videoId) : [];
                         setCachedPlaylist(channelId, ids);
@@ -476,6 +491,7 @@
                 });
 
                 const idResults = await Promise.all(fetchPromises);
+                if (authExpired) return;
                 idResults.forEach(ids => { allVideoIds = allVideoIds.concat(ids); });
 
                 const pinnedIds = JSON.parse(localStorage.getItem('pinned_video_ids') || '[]');
@@ -483,6 +499,7 @@
 
                 statusEl.innerText = 'フィードを構築中...';
                 allVideosMaster = await fetchVideoDetails(allVideoIds);
+                if (authExpired) return;
                 
                 statusEl.style.display = 'none';
                 processAndRender(allVideosMaster);
@@ -513,6 +530,7 @@
                     const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=5`;
                     try {
                         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                        if (res.status === 401) { handleExpiredToken(); return []; }
                         const data = await res.json();
                         const ids = data.items ? data.items.map(i => i.snippet?.resourceId?.videoId).filter(Boolean) : [];
                         setCachedPlaylist(chId, ids);
@@ -521,6 +539,7 @@
                 });
 
                 const results = await Promise.all(promises);
+                if (authExpired) return;
                 results.forEach(ids => { kirinukiVideoIds = kirinukiVideoIds.concat(ids); });
 
                 if (kirinukiVideoIds.length === 0) {
@@ -530,6 +549,7 @@
                 }
 
                 const kirinukiVideos = await fetchVideoDetails(kirinukiVideoIds);
+                if (authExpired) return;
                 
                 // 安全ガード付き検門フィルター
                 const matchedKirinuki = kirinukiVideos.filter(v => {
@@ -600,6 +620,7 @@
                 const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${chunk.join(',')}`;
                 try {
                     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                    if (res.status === 401) { handleExpiredToken(); break; }
                     const data = await res.json();
                     if (data.items) {
                         const mapped = data.items.map(item => ({
