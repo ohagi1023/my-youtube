@@ -264,40 +264,16 @@
                     動画を読み込んでいます...
                 </div>
 
-                <div id="live-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-red-500 tracking-wider flex items-center gap-2 mb-4">
-                        <span class="animate-pulse bg-red-500 w-2 h-2 rounded-full inline-block"></span> 🔴 配信中のライブ
-                    </h2>
-                    <div id="live-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
-                </div>
-
                 <div id="upcoming-section" class="mb-10 hidden">
                     <h2 class="text-sm font-bold text-amber-500 tracking-wider flex items-center gap-2 mb-4">⏰ 配信予定の待機所</h2>
                     <div id="upcoming-scroll" class="overflow-x-auto pb-4 scroll-container"></div>
                 </div>
 
-                <div id="pinned-section" class="mb-10 p-4 bg-teal-950/10 border border-teal-900/30 rounded-2xl hidden">
-                    <h2 class="text-sm font-bold text-teal-400 tracking-wider flex items-center justify-between gap-2 mb-4">
-                        <span class="flex items-center gap-2">📌 あとで見るキープ</span>
-                        <button id="playqueue-pinned" onclick="playSectionQueue('pinned')" class="hidden text-[10px] font-medium text-zinc-950 bg-teal-400 hover:bg-teal-300 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                <div id="live-section" class="mb-10 hidden">
+                    <h2 class="text-sm font-bold text-red-500 tracking-wider flex items-center gap-2 mb-4">
+                        <span class="animate-pulse bg-red-500 w-2 h-2 rounded-full inline-block"></span> 🔴 配信中のライブ
                     </h2>
-                    <div id="pinned-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
-                </div>
-
-                <div id="frequent-section" class="mb-10 p-4 bg-zinc-900/20 border border-zinc-900 rounded-2xl hidden">
-                    <h2 class="text-sm font-bold tracking-wider flex items-center justify-between gap-2 mb-4">
-                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">🔥 あなたの特別枠</span>
-                        <button id="playqueue-frequent" onclick="playSectionQueue('frequent')" class="hidden text-[10px] font-medium text-white bg-fuchsia-600 hover:bg-fuchsia-500 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
-                    </h2>
-                    <div id="frequent-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
-                </div>
-
-                <div id="shorts-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-red-400 tracking-wider flex items-center justify-between gap-2 mb-4">
-                        <span class="flex items-center gap-2">📱 縦型ショート</span>
-                        <button id="playqueue-shorts" onclick="playSectionQueue('shorts')" class="hidden text-[10px] font-medium text-white bg-red-500 hover:bg-red-400 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
-                    </h2>
-                    <div id="shorts-scroll" class="flex overflow-x-auto gap-3 pb-4 scroll-container"></div>
+                    <div id="live-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
                 </div>
 
                 <div id="today-section" class="mb-10 hidden">
@@ -306,6 +282,22 @@
                         <button id="playqueue-today" onclick="playSectionQueue('today')" class="hidden text-[10px] font-medium text-zinc-950 bg-zinc-200 hover:bg-white px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
                     </h2>
                     <div id="today-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
+                </div>
+
+                <div id="shorts-section" class="mb-10 hidden">
+                    <h2 class="text-sm font-bold text-red-400 tracking-wider flex items-center justify-between gap-2 mb-4">
+                        <span class="flex items-center gap-2">📱 ショート動画</span>
+                        <button id="playqueue-shorts" onclick="playSectionQueue('shorts')" class="hidden text-[10px] font-medium text-white bg-red-500 hover:bg-red-400 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                    </h2>
+                    <div id="shorts-scroll" class="flex overflow-x-auto gap-3 pb-4 scroll-container"></div>
+                </div>
+
+                <div id="pinned-section" class="mb-10 p-4 bg-teal-950/10 border border-teal-900/30 rounded-2xl hidden">
+                    <h2 class="text-sm font-bold text-teal-400 tracking-wider flex items-center justify-between gap-2 mb-4">
+                        <span class="flex items-center gap-2">📌 あとで見るキープ</span>
+                        <button id="playqueue-pinned" onclick="playSectionQueue('pinned')" class="hidden text-[10px] font-medium text-zinc-950 bg-teal-400 hover:bg-teal-300 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                    </h2>
+                    <div id="pinned-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
                 </div>
 
                 <div id="recent-section" class="mb-10 hidden">
@@ -921,24 +913,27 @@
             });
 
             const normalList = normalUnviewed.filter(v => !isShorts(v.duration));
-            const frequentList = normalList.filter(v => frequentChannels.includes(v.channelTitle)).sort((a,b)=>b.publishedAt-a.publishedAt);
-            const remainingNormal = normalList.filter(v => !frequentChannels.includes(v.channelTitle));
+            const favSort = (a, b) => {
+                const aFav = frequentChannels.includes(a.channelTitle) ? 1 : 0;
+                const bFav = frequentChannels.includes(b.channelTitle) ? 1 : 0;
+                if (aFav !== bFav) return bFav - aFav;
+                return b.publishedAt - a.publishedAt;
+            };
 
-            const todayList = remainingNormal.filter(v => v.publishedAt >= oneDayAgo).sort((a,b)=>b.publishedAt-a.publishedAt);
-            const recentList = remainingNormal.filter(v => v.publishedAt < oneDayAgo).sort((a,b)=>b.publishedAt-a.publishedAt);
+            const todayList = normalList.filter(v => v.publishedAt >= oneDayAgo).sort(favSort);
+            const recentList = normalList.filter(v => v.publishedAt < oneDayAgo).sort(favSort);
             const watchedList = watched.sort((a,b)=>b.publishedAt-a.publishedAt);
 
             renderSection('live', liveList, true, false);
             renderUpcomingTimeline(upcomingList);
             renderSection('pinned', pinnedList, false, false);
-            renderSection('frequent', frequentList, false, false);
             renderSection('shorts', shortsList, false, false, true);
             renderSection('today', todayList, false, false);
             renderSection('recent', recentList, false, false);
             renderSection('watched', watchedList, false, true);
 
             // ─── 「まとめて見る」対象セクションの動画リストを保持し、ボタンの表示切り替え ───
-            renderedSectionVideos = { pinned: pinnedList, frequent: frequentList, shorts: shortsList, today: todayList, recent: recentList };
+            renderedSectionVideos = { pinned: pinnedList, shorts: shortsList, today: todayList, recent: recentList };
             Object.keys(renderedSectionVideos).forEach(prefix => {
                 const btn = document.getElementById(`playqueue-${prefix}`);
                 if (btn) btn.classList.toggle('hidden', renderedSectionVideos[prefix].length < 2);
@@ -971,13 +966,14 @@
             if (list.length === 0) { section.classList.add('hidden'); return; }
             section.classList.remove('hidden');
 
-            const HOUR_PX = 110;       // 1時間あたりの横幅
+            const HOUR_PX = 34;        // 1時間あたりの横幅（狭めてほぼスクロール不要に）
             const TOTAL_HOURS = 24;    // 常に24時間分固定
-            const CARD_W = 108;        // サムネカードの横幅
-            const BOX_H = 80;          // サムネ＋チャンネル名の高さ目安
+            const CARD_W = 84;         // サムネカードの横幅
+            const BOX_H = 74;          // サムネ＋チャンネル名の高さ目安（通常時）
             const CONNECTOR_MIN = 20;  // 軸から一番近いレーンまでの最小距離
-            const LANE_GAP = 96;       // レーン間の縦間隔
+            const LANE_GAP = 90;       // レーン間の縦間隔
             const TOP_MARGIN = 10;
+            const HOVER_PAD = 54;      // ホバー拡大時に上が見切れないための余白
 
             const nowTime = new Date();
             const endTime = new Date(nowTime.getTime() + TOTAL_HOURS * 3600000);
@@ -996,12 +992,12 @@
                 const x = timeToX(v.scheduledStartTime || nowTime);
                 let lane = 0;
                 while (laneEndX[lane] !== undefined && x < laneEndX[lane]) lane++;
-                laneEndX[lane] = x + CARD_W + 12;
+                laneEndX[lane] = x + CARD_W + 10;
                 maxLane = Math.max(maxLane, lane);
                 return { v, x, lane };
             });
 
-            const axisY = TOP_MARGIN + BOX_H + CONNECTOR_MIN + maxLane * LANE_GAP;
+            const axisY = HOVER_PAD + TOP_MARGIN + BOX_H + CONNECTOR_MIN + maxLane * LANE_GAP;
             const totalHeight = axisY + 20;
 
             // ─── 6時間ごとの目盛り生成 ───
@@ -1031,7 +1027,7 @@
             });
             axisHtml += `<div class="absolute bg-zinc-700" style="left:0px; top:${axisY}px; width:${timelineWidth}px; height:1px;"></div>`;
 
-            // ─── 各配信予定のカード＋接続線 ───
+            // ─── 各配信予定のカード＋接続線（ホバーで拡大＋タイトル表示）───
             let boxesHtml = '';
             placed.forEach(({ v, x, lane }) => {
                 const boxTop = axisY - CONNECTOR_MIN - BOX_H - lane * LANE_GAP;
@@ -1039,15 +1035,21 @@
                 const timeLabel = v.scheduledStartTime
                     ? `${String(v.scheduledStartTime.getHours()).padStart(2, '0')}:${String(v.scheduledStartTime.getMinutes()).padStart(2, '0')}`
                     : '未定';
+                const safeTitle = v.title.replace(/"/g, '&quot;');
 
                 boxesHtml += `
-                    <div class="absolute" style="left:${x}px; top:${boxTop}px; width:${CARD_W}px;">
-                        <a href="${v.url}" target="_blank" onclick="watchVideo('${v.id}')" class="block group">
-                            <div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black border border-amber-900/50 group-hover:border-amber-400 transition">
-                                <img src="${v.thumbnail}" alt="${v.title}" class="w-full h-full object-cover">
-                                <span class="absolute top-1 left-1 text-[8px] font-bold bg-amber-600 text-white px-1 py-0.5 rounded">${timeLabel}〜</span>
+                    <div class="absolute" style="left:${x}px; top:${boxTop}px; width:${CARD_W}px; height:${BOX_H}px;">
+                        <a href="${v.url}" target="_blank" onclick="watchVideo('${v.id}')" class="group block absolute bottom-0 left-0" style="width:${CARD_W}px;">
+                            <div class="origin-bottom transition-transform duration-150 ease-out group-hover:scale-[1.65] group-hover:z-50 relative" style="width:${CARD_W}px;">
+                                <div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black border border-amber-900/50 group-hover:border-amber-400 group-hover:shadow-2xl transition">
+                                    <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
+                                    <span class="absolute top-1 left-1 text-[8px] font-bold bg-amber-600 text-white px-1 py-0.5 rounded">${timeLabel}〜</span>
+                                </div>
+                                <div class="bg-zinc-900/95 group-hover:bg-zinc-950 rounded-b-lg px-1 pt-1 pb-1 group-hover:shadow-2xl transition">
+                                    <p class="hidden group-hover:block text-[9px] font-bold text-zinc-100 leading-snug line-clamp-2 mb-0.5">${v.title}</p>
+                                    <p class="text-[9px] text-zinc-400 truncate group-hover:text-amber-400 transition">${v.channelTitle}</p>
+                                </div>
                             </div>
-                            <p class="text-[9px] text-zinc-400 truncate mt-1 group-hover:text-amber-400 transition">${v.channelTitle}</p>
                         </a>
                     </div>
                     <div class="absolute bg-amber-700/60" style="left:${x + CARD_W / 2}px; top:${boxTop + BOX_H}px; width:1px; height:${Math.max(connectorHeight, 0)}px;"></div>
@@ -1249,7 +1251,7 @@
         }
 
         function clearAllGrids() {
-            ['live', 'upcoming', 'pinned', 'frequent', 'shorts', 'today', 'recent', 'watched'].forEach(p => {
+            ['live', 'upcoming', 'pinned', 'shorts', 'today', 'recent', 'watched'].forEach(p => {
                 const scrollArea = document.getElementById(`${p}-scroll`);
                 if(scrollArea) scrollArea.innerHTML = '';
                 const sec = document.getElementById(`${p}-section`);
