@@ -271,27 +271,42 @@
                 </div>
 
                 <div id="pinned-section" class="mb-10 p-4 bg-teal-950/10 border border-teal-900/30 rounded-2xl hidden">
-                    <h2 class="text-sm font-bold text-teal-400 tracking-wider flex items-center gap-2 mb-4">📌 あとで見るキープ</h2>
+                    <h2 class="text-sm font-bold text-teal-400 tracking-wider flex items-center justify-between gap-2 mb-4">
+                        <span class="flex items-center gap-2">📌 あとで見るキープ</span>
+                        <button id="playqueue-pinned" onclick="playSectionQueue('pinned')" class="hidden text-[10px] font-medium text-zinc-950 bg-teal-400 hover:bg-teal-300 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                    </h2>
                     <div id="pinned-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
                 </div>
 
                 <div id="frequent-section" class="mb-10 p-4 bg-zinc-900/20 border border-zinc-900 rounded-2xl hidden">
-                    <h2 class="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400 tracking-wider flex items-center gap-2 mb-4">🔥 あなたの特別枠</h2>
+                    <h2 class="text-sm font-bold tracking-wider flex items-center justify-between gap-2 mb-4">
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">🔥 あなたの特別枠</span>
+                        <button id="playqueue-frequent" onclick="playSectionQueue('frequent')" class="hidden text-[10px] font-medium text-white bg-fuchsia-600 hover:bg-fuchsia-500 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                    </h2>
                     <div id="frequent-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
                 </div>
 
                 <div id="shorts-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-red-400 tracking-wider flex items-center gap-2 mb-4">📱 縦型ショート</h2>
+                    <h2 class="text-sm font-bold text-red-400 tracking-wider flex items-center justify-between gap-2 mb-4">
+                        <span class="flex items-center gap-2">📱 縦型ショート</span>
+                        <button id="playqueue-shorts" onclick="playSectionQueue('shorts')" class="hidden text-[10px] font-medium text-white bg-red-500 hover:bg-red-400 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                    </h2>
                     <div id="shorts-scroll" class="flex overflow-x-auto gap-3 pb-4 scroll-container"></div>
                 </div>
 
                 <div id="today-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-zinc-300 tracking-wider flex items-center gap-2 mb-4">✨ 本日の新着</h2>
+                    <h2 class="text-sm font-bold text-zinc-300 tracking-wider flex items-center justify-between gap-2 mb-4">
+                        <span class="flex items-center gap-2">✨ 本日の新着</span>
+                        <button id="playqueue-today" onclick="playSectionQueue('today')" class="hidden text-[10px] font-medium text-zinc-950 bg-zinc-200 hover:bg-white px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                    </h2>
                     <div id="today-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
                 </div>
 
                 <div id="recent-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-zinc-500 tracking-wider flex items-center gap-2 mb-4">📅 最近の投稿</h2>
+                    <h2 class="text-sm font-bold text-zinc-500 tracking-wider flex items-center justify-between gap-2 mb-4">
+                        <span class="flex items-center gap-2">📅 最近の投稿</span>
+                        <button id="playqueue-recent" onclick="playSectionQueue('recent')" class="hidden text-[10px] font-medium text-zinc-200 bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                    </h2>
                     <div id="recent-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
                 </div>
 
@@ -324,6 +339,7 @@
         let allVideosMaster = []; 
         let mySubscribedChannels = []; 
         let categoryExtraVideos = { endra: [], vtuber: [], talk_sing: [], clip: [] }; // 各特化フィルター専用チャンネルの動画
+        let renderedSectionVideos = {}; // 各セクションの現在の表示内容（まとめて見る機能で参照）
         let viewedVideoIds = new Set(JSON.parse(localStorage.getItem('viewed_video_ids') || '[]'));
         
         let currentFilter = 'all'; 
@@ -898,6 +914,13 @@
             renderSection('recent', recentList, false, false);
             renderSection('watched', watchedList, false, true);
 
+            // ─── 「まとめて見る」対象セクションの動画リストを保持し、ボタンの表示切り替え ───
+            renderedSectionVideos = { pinned: pinnedList, frequent: frequentList, shorts: shortsList, today: todayList, recent: recentList };
+            Object.keys(renderedSectionVideos).forEach(prefix => {
+                const btn = document.getElementById(`playqueue-${prefix}`);
+                if (btn) btn.classList.toggle('hidden', renderedSectionVideos[prefix].length < 2);
+            });
+
             const emptyMessage = document.getElementById('empty-message');
             if (emptyMessage) {
                 if (filtered.length === 0) {
@@ -968,6 +991,32 @@
             let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
             if (pinnedIds.has(videoId)) { pinnedIds.delete(videoId); } else { pinnedIds.add(videoId); }
             localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
+            processAndRender(allVideosMaster);
+        }
+
+        // ─── セクションの動画をまとめてキュー再生（YouTubeの一時プレイリスト機能を利用） ───
+        function playSectionQueue(prefix) {
+            const list = renderedSectionVideos[prefix] || [];
+            const ids = list.filter(v => v.liveStatus !== 'live').map(v => v.id);
+            if (ids.length === 0) return;
+
+            // クリックしたのと同様に、視聴済み・学習履歴・ピン解除を一括反映
+            const clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
+            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            list.forEach(v => {
+                if (v.channelTitle) clicks[v.channelTitle] = (clicks[v.channelTitle] || 0) + 1;
+                if (v.liveStatus !== 'live') viewedVideoIds.add(v.id);
+                pinnedIds.delete(v.id);
+            });
+            localStorage.setItem('channel_clicks', JSON.stringify(clicks));
+            localStorage.setItem('viewed_video_ids', JSON.stringify([...viewedVideoIds]));
+            localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
+
+            const url = ids.length === 1
+                ? `https://www.youtube.com/watch?v=${ids[0]}`
+                : `https://www.youtube.com/watch?v=${ids[0]}&playlist=${ids.slice(1).join(',')}`;
+            window.open(url, '_blank');
+
             processAndRender(allVideosMaster);
         }
 
