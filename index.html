@@ -2,739 +2,91 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CUSTOM FEED</title>
-    <!-- Google Identity Services SDK -->
+    <title>CUSTOM FEED v8.5</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #09090b; color: #f4f4f5; font-family: system-ui, -apple-system, sans-serif; }
-        
-        .scroll-container::-webkit-scrollbar {
-            height: 5px;
-            width: 4px;
-        }
-        .scroll-container::-webkit-scrollbar-track {
-            background: #18181b;
-            border-radius: 10px;
-        }
-        .scroll-container::-webkit-scrollbar-thumb {
-            background: #3f3f46;
-            border-radius: 10px;
-        }
-        .scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #71717a;
-        }
-        
-        .video-card { 
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
-        .video-card:hover { 
-            transform: translateY(-4px); 
-            border-color: #3f3f46; 
-            box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.8); 
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #2dd4bf;
-            cursor: pointer;
-        }
-    </style>
 </head>
-<body class="min-h-screen flex flex-col">
-
-    <div class="flex flex-col md:flex-row flex-grow min-h-screen">
-        
-        <!-- ─── 📂 左側：サイドバー ─── -->
-        <aside class="w-full md:w-64 bg-zinc-950 border-b md:border-b-0 md:border-r border-zinc-900 p-5 flex flex-col shrink-0">
-            <h1 class="text-base font-extrabold tracking-wider flex items-center gap-2 mb-6">
-                <span class="text-red-500">📺</span> CUSTOM FEED
-            </h1>
-
-            <div class="mb-6">
-                <button id="login-btn" onclick="handleAuthClick()" class="w-full bg-zinc-100 hover:bg-white text-zinc-900 text-xs py-2 rounded-xl font-bold transition shadow-md">
-                    Google連携
-                </button>
-                <button id="logout-btn" onclick="handleSignoutClick()" class="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-800 text-xs py-2 rounded-xl font-medium transition" style="display: none;">
-                    接続解除
-                </button>
-            </div>
-
-            <div id="sidebar-menu" class="hidden flex-grow flex flex-col justify-between overflow-y-auto">
-                <div class="space-y-5">
-                    <div>
-                        <p class="text-[10px] text-zinc-500 font-bold mb-2 tracking-wider uppercase">メイン表示</p>
-                        <button onclick="changeFilter('all')" id="btn-filter-all" class="w-full text-left text-xs px-3 py-2 rounded-lg bg-zinc-900 text-zinc-100 font-semibold transition">
-                            🏠 すべて表示
-                        </button>
-                    </div>
-
-                    <div>
-                        <p class="text-[10px] text-zinc-500 font-bold mb-2 tracking-wider uppercase">🔍 特化フィルター</p>
-                        <div class="space-y-1">
-                            <button onclick="changeFilter('endra')" id="btn-filter-endra" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
-                                🐉 エンドラRTA系
-                            </button>
-                            <button onclick="changeFilter('vtuber')" id="btn-filter-vtuber" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
-                                🛸 VTuber
-                            </button>
-                            <button onclick="changeFilter('talk_sing')" id="btn-filter-talk_sing" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
-                                💬 雑談・歌枠
-                            </button>
-                            <button onclick="changeFilter('clip')" id="btn-filter-clip" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
-                                ✂️ 切り抜き
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-zinc-900 pt-4">
-                        <p class="text-[10px] text-zinc-500 font-bold mb-1 tracking-wider uppercase">⏱️ 時間で絞り込み</p>
-                        <div class="flex justify-between items-center text-[11px] text-teal-400 font-medium mb-1.5">
-                            <span id="duration-label">すべて表示</span>
-                        </div>
-                        <input type="range" id="duration-slider" min="0" max="95" value="0" step="5" oninput="handleSliderChange(this.value)" class="w-full bg-zinc-800 h-1 rounded-lg appearance-none cursor-pointer accent-teal-400">
-                        <div class="flex justify-between text-[8px] text-zinc-600 mt-1">
-                            <span>制限なし</span>
-                            <span>15分</span>
-                            <span>30分</span>
-                            <span>60分</span>
-                            <span>90分+</span>
-                        </div>
-                    </div>
-
-                    <!-- ─── 【改善】サイドバー専用・登録外切り抜きフィード ─── -->
-                    <div class="border-t border-zinc-900 pt-4 flex flex-col flex-grow">
-                        <p class="text-[10px] text-zinc-500 font-bold mb-2 tracking-wider uppercase flex justify-between items-center">
-                            <span>✂️ 登録外の推し切り抜き</span>
-                            <span id="kirinuki-count" class="text-zinc-600 text-[9px]">0本</span>
-                        </p>
-                        <div id="sidebar-kirinuki-list" class="space-y-2 max-h-[220px] overflow-y-auto pr-1 scroll-container text-[11px] text-zinc-500">
-                            連携すると読み込みます
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-4 border-t border-zinc-900 text-[10px] text-zinc-700 font-mono tracking-wider mt-6 shrink-0">
-                    v8.4
-                </div>
-            </div>
-        </aside>
-
-        <!-- ─── 📺 右側：メインコンテンツ ─── -->
-        <main class="flex-grow p-4 md:p-8 max-w-7xl">
-            <div id="welcome-content" class="text-center my-24 p-8 bg-zinc-900/50 backdrop-blur rounded-2xl border border-zinc-800 max-w-md mx-auto shadow-xl">
-                <h2 class="text-lg font-bold mb-3">あなた専用のYouTube特化フィード</h2>
-                <p class="text-zinc-400 text-xs mb-6 leading-relaxed">
-                    ログインすると、登録チャンネルから最新動画を自動取得。さらに、あなたがよく見るチャンネルを自動で学習し、最優先で表示します。
-                </p>
-                <button onclick="handleAuthClick()" class="bg-red-600 hover:bg-red-700 text-sm px-6 py-3 rounded-full font-bold transition shadow-lg">
-                    連携を開始する
-                </button>
-            </div>
-
-            <div id="main-content" class="hidden">
-                <div class="flex gap-3 mb-10 max-w-2xl">
-                    <div class="relative flex-grow">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-500 text-sm">🔍</span>
-                        <input type="text" id="filter-search" oninput="filterVideos()" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 pl-9 pr-4 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition" placeholder="タイトルやチャンネル名で絞り込み...">
-                    </div>
-                    <button onclick="refreshFeed()" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs px-5 py-2.5 rounded-xl font-medium transition flex items-center justify-center gap-1.5 shrink-0">
-                        🔄 更新
-                    </button>
-                </div>
-
-                <div id="status" class="text-center my-16 text-zinc-500 text-sm font-medium">
-                    動画を読み込んでいます...
-                </div>
-
-                <div id="live-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-red-500 tracking-wider flex items-center gap-2 mb-4">
-                        <span class="animate-pulse bg-red-500 w-2 h-2 rounded-full inline-block"></span> 🔴 配信中のライブ
-                    </h2>
-                    <div id="live-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
-                </div>
-
-                <div id="upcoming-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-amber-500 tracking-wider flex items-center gap-2 mb-4">⏰ 配信予定の待機所</h2>
-                    <div id="upcoming-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
-                </div>
-
-                <div id="pinned-section" class="mb-10 p-4 bg-teal-950/10 border border-teal-900/30 rounded-2xl hidden">
-                    <h2 class="text-sm font-bold text-teal-400 tracking-wider flex items-center gap-2 mb-4">📌 あとで見るキープ</h2>
-                    <div id="pinned-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
-                </div>
-
-                <div id="frequent-section" class="mb-10 p-4 bg-zinc-900/20 border border-zinc-900 rounded-2xl hidden">
-                    <h2 class="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400 tracking-wider flex items-center gap-2 mb-4">🔥 あなたの特別枠</h2>
-                    <div id="frequent-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
-                </div>
-
-                <div id="shorts-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-red-400 tracking-wider flex items-center gap-2 mb-4">📱 縦型ショート</h2>
-                    <div id="shorts-scroll" class="flex overflow-x-auto gap-3 pb-4 scroll-container"></div>
-                </div>
-
-                <div id="today-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-zinc-300 tracking-wider flex items-center gap-2 mb-4">✨ 本日の新着</h2>
-                    <div id="today-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
-                </div>
-
-                <div id="recent-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-zinc-500 tracking-wider flex items-center gap-2 mb-4">📅 最近の投稿</h2>
-                    <div id="recent-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
-                </div>
-
-                <div id="watched-section" class="mb-10 border-t border-zinc-900 pt-8 hidden">
-                    <h2 class="text-sm font-bold text-zinc-600 tracking-wider flex items-center gap-2 mb-4">✅ 視聴済みの動画・ライブ</h2>
-                    <div id="watched-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
-                </div>
-
-                <div id="empty-message" class="text-center my-24 text-zinc-600 hidden">
-                    <p class="text-2xl mb-2">✨</p>
-                    <p class="text-xs font-medium">対象の動画や配信はありません</p>
-                </div>
-            </div>
-
-            <footer id="admin-footer" class="mt-24 pt-8 border-t border-zinc-900 flex flex-col sm:flex-row justify-center gap-6 text-center hidden">
-                <button onclick="resetViewedList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">すべての動画を「未視聴」に戻す</button>
-                <button onclick="resetPinnedList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">「あとで見るキープ」をすべてクリア</button>
-                <button onclick="resetClicksList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">AIの学習履歴をリセットする</button>
-            </footer>
-        </main>
-    </div>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+    <div id="status" class="p-4 text-zinc-400">初期化中...</div>
+    <div id="content" class="p-4"></div>
 
     <script>
         const CLIENT_ID = '617132904694-v3buugv4jh6pjp9bntcn08q8ekl8ciu5.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/youtube.readonly';
-
-        let tokenClient;
-        let accessToken = null;
-        let allVideosMaster = []; 
-        let mySubscribedChannels = []; 
-        let viewedVideoIds = new Set(JSON.parse(localStorage.getItem('viewed_video_ids') || '[]'));
         
-        let currentFilter = 'all'; 
-        let maxDurationMinutes = 0; 
+        // デバッグ用ログ出力関数
+        function log(msg) { console.log(`[DEBUG]: ${msg}`); }
 
-        const FILTER_KEYWORDS = {
-            endra: ['エンドラ', 'endra', '軍艦'],
-            vtuber: ['vtuber', 'v tuber', 'にじさんじ', 'ホロライブ', 'ぶいすぽ', 'ネオポルテ', 'あおぎり', 'のりプロ', 'ホロスターズ'],
-            talk_sing: ['雑談', '歌枠', 'singing', '歌ってみた', 'mv', 'cover', '弾き語り', 'ライブ音源'],
-            clip: ['切り抜き', 'まとめ', '名場面', 'clips']
-        };
-
-        const HIDDEN_KIRINUKI_CHANNELS = [
-            'UCoM5tr4Uf8qYDe48IOyMLNw',
-            'UCZ_Gm9ipdFovmM8Pf9f-_Ww',
-            'UC2bTmb1UK1gv9rAvjiORRuQ',
-            'UC0_zoJAoiwQSMFdMjkGatAQ',
-            'UCzfEOwQSg1OMcwgtV6u1_kA',
-            'UCIOwdHIKvZbkJWabnl-Mb0Q',
-            'UCTqaQDh8fiakSnhi0xHeArw',
-            'UC04LmK8LzR09018BJ4mDAAw'
-        ];
+        let accessToken = null;
+        let mySubscribedChannels = [];
 
         function initTokenClient() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
+            window.tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
                 scope: SCOPES,
-                callback: (tokenResponse) => {
-                    if (tokenResponse && tokenResponse.access_token) {
-                        accessToken = tokenResponse.access_token;
-                        sessionStorage.setItem('yt_oauth_token', accessToken);
-                        showUi(true);
-                        refreshFeed();
+                callback: (res) => {
+                    if (res.access_token) {
+                        accessToken = res.access_token;
+                        startApp();
                     }
-                },
+                }
             });
         }
 
-        window.onload = function() {
+        window.onload = () => {
             initTokenClient();
-            const savedToken = sessionStorage.getItem('yt_oauth_token');
-            if (savedToken) {
-                accessToken = savedToken;
-                showUi(true);
-                refreshFeed();
-            } else {
-                showUi(false);
-            }
+            document.getElementById('content').innerHTML = `<button onclick="window.tokenClient.requestAccessToken()" class="bg-blue-600 p-4 rounded">連携開始</button>`;
+            document.getElementById('status').innerText = '準備完了';
         };
 
-        function handleAuthClick() { tokenClient.requestAccessToken({ prompt: 'select_account' }); }
-        function handleSignoutClick() {
-            if (accessToken) {
-                google.accounts.oauth2.revokeToken(accessToken, () => {
-                    accessToken = null;
-                    sessionStorage.removeItem('yt_oauth_token');
-                    allVideosMaster = [];
-                    mySubscribedChannels = [];
-                    showUi(false);
-                });
-            }
-        }
-
-        function showUi(isLoggedIn) {
-            document.getElementById('login-btn').style.display = isLoggedIn ? 'none' : 'block';
-            document.getElementById('logout-btn').style.display = isLoggedIn ? 'block' : 'none';
-            document.getElementById('main-content').style.display = isLoggedIn ? 'block' : 'none';
-            document.getElementById('welcome-content').style.display = isLoggedIn ? 'none' : 'block';
-            document.getElementById('sidebar-menu').style.display = isLoggedIn ? 'flex' : 'none';
-            document.getElementById('admin-footer').style.display = isLoggedIn ? 'flex' : 'none';
-        }
-
-        async function refreshFeed() {
-            const statusEl = document.getElementById('status');
-            statusEl.style.display = 'block';
-            statusEl.innerText = '登録チャンネルを取得中...';
-            clearAllGrids();
-            document.getElementById('sidebar-kirinuki-list').innerText = '巡回中...';
-
+        async function startApp() {
+            log('アプリ開始');
             try {
-                const subUrl = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50`;
-                const subRes = await fetch(subUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                if (subRes.status === 401) { handleSignoutClick(); return; }
+                // 1. 登録チャンネル取得
+                const subRes = await fetch(`https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
                 const subData = await subRes.json();
-                if (!subData.items) { statusEl.innerText = 'チャンネルが見つかりません。'; return; }
-
-                mySubscribedChannels = subData.items.map(item => item.snippet?.title ? item.snippet.title.toLowerCase() : '');
-
-                statusEl.innerText = '新着動画を解析中...';
+                if (!subData.items) throw new Error('チャンネル取得失敗');
                 
-                let allVideoIds = [];
-                const fetchPromises = subData.items.map(async (item) => {
-                    const channelId = item.snippet.resourceId.channelId;
-                    const uploadPlaylistId = 'UU' + channelId.substring(2);
-                    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=3`;
-                    try {
-                        const res = await fetch(playlistUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                        const data = await res.json();
-                        return data.items ? data.items.map(i => i.snippet.resourceId.videoId) : [];
-                    } catch (e) { return []; }
-                });
+                mySubscribedChannels = subData.items.map(i => i.snippet?.title?.toLowerCase() || '').filter(Boolean);
+                log(`登録チャンネル数: ${mySubscribedChannels.length}`);
 
-                const idResults = await Promise.all(fetchPromises);
-                idResults.forEach(ids => { allVideoIds = allVideoIds.concat(ids); });
-
-                const pinnedIds = JSON.parse(localStorage.getItem('pinned_video_ids') || '[]');
-                allVideoIds = [...new Set([...allVideoIds, ...pinnedIds])];
-
-                statusEl.innerText = 'フィードを構築中...';
-                allVideosMaster = await fetchVideoDetails(allVideoIds);
+                // 2. 隠し切り抜き巡回（完全に独立した関数にする）
+                await fetchHiddenKirinuki();
                 
-                statusEl.style.display = 'none';
-                processAndRender(allVideosMaster);
-
-                // ─── メイン描画が終わってから安全に切り抜き巡回をキック ───
-                await fetchAndRenderHiddenKirinuki();
-
-            } catch (err) {
-                console.error(err);
-                statusEl.innerText = 'エラーが発生しました。再読み込みしてください。';
+            } catch (e) {
+                console.error(e);
+                document.getElementById('status').innerText = `エラー発生: ${e.message}`;
             }
         }
 
-        async function fetchAndRenderHiddenKirinuki() {
-            const kirinukiListEl = document.getElementById('sidebar-kirinuki-list');
-            if (!kirinukiListEl) return;
+        async function fetchHiddenKirinuki() {
+            log('切り抜き巡回開始');
+            const IDs = ['UCoM5tr4Uf8qYDe48IOyMLNw', 'UCZ_Gm9ipdFovmM8Pf9f-_Ww']; // テスト用に2つに削減
             
-            let kirinukiVideoIds = [];
-
-            try {
-                const promises = HIDDEN_KIRINUKI_CHANNELS.map(async (chId) => {
-                    const uploadPlaylistId = 'UU' + chId.substring(2);
-                    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=5`;
-                    try {
-                        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                        const data = await res.json();
-                        return data.items ? data.items.map(i => i.snippet?.resourceId?.videoId).filter(Boolean) : [];
-                    } catch (e) { return []; }
-                });
-
-                const results = await Promise.all(promises);
-                results.forEach(ids => { kirinukiVideoIds = kirinukiVideoIds.concat(ids); });
-
-                if (kirinukiVideoIds.length === 0) {
-                    kirinukiListEl.innerText = '新しい推しの切り抜きはありません';
-                    return;
-                }
-
-                const kirinukiVideos = await fetchVideoDetails(kirinukiVideoIds);
-                
-                // 安全ガード付き検門フィルター
-                const matchedKirinuki = kirinukiVideos.filter(v => {
-                    if (!v || !v.title) return false;
-                    const titleLower = v.title.toLowerCase();
-                    
-                    const hasSubscribedName = mySubscribedChannels.some(chName => {
-                        if (!chName || chName.length < 3) return false;
-                        return titleLower.includes(chName);
-                    });
-                    
-                    const hasBoxName = ['ぶいすぽ', 'ネオポルテ', 'neo-porte', 'ミリプロ'].some(box => titleLower.includes(box));
-                    
-                    return (hasSubscribedName || hasBoxName) && !viewedVideoIds.has(v.id);
-                });
-
-                matchedKirinuki.sort((a, b) => b.publishedAt - a.publishedAt);
-
-                kirinukiListEl.innerHTML = '';
-                const countEl = document.getElementById('kirinuki-count');
-                if (countEl) countEl.innerText = `${matchedKirinuki.length}本`;
-
-                if (matchedKirinuki.length === 0) {
-                    kirinukiListEl.innerText = '新しい推しの切り抜きはありません';
-                    return;
-                }
-
-                matchedKirinuki.forEach(v => {
-                    const div = document.createElement('div');
-                    div.className = 'p-1.5 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-900 rounded-lg flex gap-2 transition group relative';
-                    div.innerHTML = `
-                        <div class="w-16 h-9 shrink-0 bg-black rounded overflow-hidden relative">
-                            <img src="${v.thumbnail}" class="w-full h-full object-cover">
-                        </div>
-                        <div class="flex flex-col justify-between min-w-0 flex-grow">
-                            <a href="${v.url}" target="_blank" onclick="watchVideo('${v.id}')" class="font-medium text-zinc-300 line-clamp-2 hover:text-teal-400 leading-tight tracking-wide group-hover:underline">
-                                ${v.title}
-                            </a>
-                            <p class="text-[9px] text-zinc-600 truncate mt-0.5">${v.channelTitle}</p>
-                        </div>
-                    `;
-                    kirinukiListEl.appendChild(div);
-                });
-            } catch (err) {
-                console.error("Kirinuki fetch error:", err);
-                kirinukiListEl.innerText = '切り抜きの取得に失敗しました';
-            }
-        }
-
-        async function fetchVideoDetails(videoIds) {
-            if (!videoIds || videoIds.length === 0) return [];
-            let details = [];
-            // 重複排除
-            const uniqueIds = [...new Set(videoIds)];
-            
-            for (let i = 0; i < uniqueIds.length; i += 50) {
-                const chunk = uniqueIds.slice(i, i + 50);
-                const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${chunk.join(',')}`;
+            for (const chId of IDs) {
                 try {
+                    const pid = 'UU' + chId.substring(2);
+                    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${pid}&maxResults=3`;
                     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
                     const data = await res.json();
-                    if (data.items) {
-                        const mapped = data.items.map(item => ({
-                            id: item.id,
-                            title: item.snippet?.title || '',
-                            thumbnail: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || '',
-                            channelTitle: item.snippet?.channelTitle || '',
-                            publishedAt: item.snippet?.publishedAt ? new Date(item.snippet.publishedAt) : new Date(),
-                            liveStatus: item.snippet?.liveBroadcastContent || 'none', 
-                            duration: item.contentDetails?.duration || '',
-                            scheduledStartTime: item.liveStreamingDetails?.scheduledStartTime ? new Date(item.liveStreamingDetails.scheduledStartTime) : null,
-                            url: `https://www.youtube.com/watch?v=${item.id}`
-                        }));
-                        details = details.concat(mapped);
-                    }
-                } catch (e) { console.error(e); }
-            }
-            return details;
-        }
+                    
+                    if (!data.items) continue;
 
-        function parseDurationToSeconds(duration) {
-            if (!duration) return 0;
-            const matches = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-            if (!matches) return 0;
-            const hours = parseInt(matches[1] || 0, 10);
-            const minutes = parseInt(matches[2] || 0, 10);
-            const seconds = parseInt(matches[3] || 0, 10);
-            return (hours * 3600) + (minutes * 60) + seconds;
-        }
-
-        function isShorts(duration) {
-            const totalSeconds = parseDurationToSeconds(duration);
-            return totalSeconds > 0 && totalSeconds <= 180;
-        }
-
-        function changeFilter(filterType) {
-            currentFilter = filterType;
-            ['all', 'endra', 'vtuber', 'talk_sing', 'clip'].forEach(f => {
-                const btn = document.getElementById(`btn-filter-${f}`);
-                if (!btn) return;
-                if (f === filterType) {
-                    btn.className = "w-full text-left text-xs px-3 py-2 rounded-lg bg-zinc-900 text-teal-400 font-bold transition flex items-center gap-1.5";
-                } else {
-                    btn.className = "w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5";
-                }
-            });
-            processAndRender(allVideosMaster);
-        }
-
-        function handleSliderChange(val) {
-            const label = document.getElementById('duration-label');
-            const minutes = parseInt(val, 10);
-            
-            if (minutes === 0) {
-                maxDurationMinutes = 0;
-                label.innerText = 'すべて表示';
-            } else if (minutes === 95) {
-                maxDurationMinutes = 90; 
-                label.innerText = '90分以上のみ';
-            } else {
-                maxDurationMinutes = minutes;
-                label.innerText = `${minutes}分以内`;
-            }
-            processAndRender(allVideosMaster);
-        }
-
-        function processAndRender(videos) {
-            clearAllGrids();
-
-            const now = new Date();
-            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-            
-            const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
-
-            let filtered = videos.filter(v => 
-                v.liveStatus === 'live' || 
-                v.liveStatus === 'upcoming' || 
-                v.publishedAt >= threeDaysAgo ||
-                pinnedIds.has(v.id)
-            );
-
-            if (currentFilter !== 'all') {
-                const keywords = FILTER_KEYWORDS[currentFilter];
-                filtered = filtered.filter(v => {
-                    const titleLower = v.title.toLowerCase();
-                    const channelLower = v.channelTitle.toLowerCase();
-                    return keywords.some(kw => titleLower.includes(kw) || channelLower.includes(kw));
-                });
-            }
-
-            if (maxDurationMinutes > 0) {
-                filtered = filtered.filter(v => {
-                    if (v.liveStatus === 'live' || v.liveStatus === 'upcoming') return true; 
-                    const seconds = parseDurationToSeconds(v.duration);
-                    const minutes = seconds / 60;
-                    if (maxDurationMinutes === 90) {
-                        return minutes >= 90; 
-                    } else {
-                        return minutes <= maxDurationMinutes; 
-                    }
-                });
-            }
-
-            const unviewed = filtered.filter(v => !viewedVideoIds.has(v.id));
-            const watched = filtered.filter(v => viewedVideoIds.has(v.id));
-
-            const clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
-            const frequentChannels = Object.keys(clicks).filter(title => clicks[title] >= 2);
-
-            const liveList = unviewed.filter(v => v.liveStatus === 'live');
-            const upcomingList = unviewed.filter(v => v.liveStatus === 'upcoming').sort((a, b) => {
-                if (!a.scheduledStartTime) return 1;
-                if (!b.scheduledStartTime) return -1;
-                return a.scheduledStartTime - b.scheduledStartTime;
-            });
-
-            const pinnedList = unviewed.filter(v => pinnedIds.has(v.id)).sort((a, b) => b.publishedAt - a.publishedAt);
-            const normalUnviewed = unviewed.filter(v => v.liveStatus !== 'live' && v.liveStatus !== 'upcoming');
-
-            const shortsList = normalUnviewed.filter(v => isShorts(v.duration)).sort((a, b) => {
-                const aFav = frequentChannels.includes(a.channelTitle) ? 1 : 0;
-                const bFav = frequentChannels.includes(b.channelTitle) ? 1 : 0;
-                if (aFav !== bFav) return bFav - aFav; 
-                return b.publishedAt - a.publishedAt; 
-            });
-
-            const normalList = normalUnviewed.filter(v => !isShorts(v.duration));
-            const frequentList = normalList.filter(v => frequentChannels.includes(v.channelTitle)).sort((a,b)=>b.publishedAt-a.publishedAt);
-            const remainingNormal = normalList.filter(v => !frequentChannels.includes(v.channelTitle));
-
-            const todayList = remainingNormal.filter(v => v.publishedAt >= oneDayAgo).sort((a,b)=>b.publishedAt-a.publishedAt);
-            const recentList = remainingNormal.filter(v => v.publishedAt < oneDayAgo).sort((a,b)=>b.publishedAt-a.publishedAt);
-            const watchedList = watched.sort((a,b)=>b.publishedAt-a.publishedAt);
-
-            renderSection('live', liveList, true, false);
-            renderSection('upcoming', upcomingList, false, false);
-            renderSection('pinned', pinnedList, false, false);
-            renderSection('frequent', frequentList, false, false);
-            renderSection('shorts', shortsList, false, false, true);
-            renderSection('today', todayList, false, false);
-            renderSection('recent', recentList, false, false);
-            renderSection('watched', watchedList, false, true);
-
-            const emptyMessage = document.getElementById('empty-message');
-            if (emptyMessage) {
-                if (filtered.length === 0) {
-                    emptyMessage.classList.remove('hidden');
-                } else {
-                    emptyMessage.classList.add('hidden');
+                    data.items.forEach(item => {
+                        const title = item.snippet?.title?.toLowerCase() || '';
+                        // 判定ロジック
+                        const isMatch = mySubscribedChannels.some(name => title.includes(name)) || title.includes('ぶいすぽ');
+                        if (isMatch) {
+                            log(`ヒット！: ${title}`);
+                        }
+                    });
+                } catch (e) {
+                    log(`チャンネル ${chId} の巡回でエラー: ${e.message}`);
                 }
             }
-        }
-
-        function renderSection(prefix, list, isLive, isWatched, isShortsGrid = false) {
-            const scrollArea = document.getElementById(`${prefix}-scroll`);
-            const section = document.getElementById(`${prefix}-section`);
-            if (!scrollArea || !section) return;
-            if (list.length === 0) { section.classList.add('hidden'); return; }
-            section.classList.remove('hidden');
-            list.forEach(v => { scrollArea.appendChild(createVideoCard(v, isLive || v.liveStatus === 'live', isWatched, isShortsGrid)); });
-        }
-
-        function createVideoCard(video, isLive, isWatched, isShortsGrid) {
-            const card = document.createElement('div');
-            card.id = `video-${video.id}`;
-            const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
-            const isPinned = pinnedIds.has(video.id);
-
-            if (isShortsGrid) {
-                card.className = `video-card bg-zinc-900 rounded-xl overflow-hidden flex flex-col flex-shrink-0 w-[140px] md:w-[165px] border border-zinc-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
-            } else {
-                card.className = `video-card bg-zinc-900 rounded-xl overflow-hidden flex flex-col flex-shrink-0 w-[240px] md:w-[280px] border border-zinc-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
-            }
-            
-            const aspectClass = isShortsGrid ? 'aspect-[9/16]' : 'aspect-video';
-            let timeStr = formatTimeAgo(video.publishedAt);
-            if (video.liveStatus === 'upcoming') {
-                timeStr = `⏰ ${formatStartTime(video.scheduledStartTime)}`;
-            } else if (isLive && !isWatched) {
-                timeStr = '🔴 LIVE配信中';
-            }
-
-            const badgeColor = isLive ? 'bg-red-600 text-white' : (video.liveStatus === 'upcoming' ? 'bg-amber-600 text-white' : (isShortsGrid ? 'bg-zinc-800 text-red-400 border border-zinc-700/50' : 'bg-zinc-800/80 text-zinc-400'));
-            const badgeText = isLive ? 'LIVE' : (video.liveStatus === 'upcoming' ? '配信予定' : (isShortsGrid ? 'Shorts' : '動画'));
-            const pinBtnClass = isPinned ? 'bg-teal-500 text-zinc-950 font-bold scale-110' : 'bg-black/60 text-zinc-400 hover:text-white hover:bg-black/80';
-
-            card.innerHTML = `
-                <div class="block ${aspectClass} overflow-hidden bg-black group relative">
-                    ${!isWatched ? `
-                        <button onclick="togglePin(event, '${video.id}')" class="absolute top-2 left-2 z-20 p-1.5 rounded-lg text-[10px] transition backdrop-blur-sm ${pinBtnClass}" title="あとで見るキープ">📌</button>
-                    ` : ''}
-                    <a href="${video.url}" target="_blank" onclick="watchVideo('${video.id}')" class="block w-full h-full">
-                        <img src="${video.thumbnail}" alt="${video.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                        <span class="absolute bottom-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
-                    </a>
-                </div>
-                <div class="p-2.5 flex flex-col flex-grow">
-                    <h3 class="font-bold text-[11px] line-clamp-2 text-zinc-200 mb-1 leading-snug tracking-wide h-8">${video.title}</h3>
-                    <div class="mt-auto text-[10px] text-zinc-500 space-y-0.5">
-                        <p class="font-medium text-zinc-400 truncate">${video.channelTitle}</p>
-                        <p class="${(isLive || video.liveStatus === 'upcoming') && !isWatched ? 'text-amber-400 font-semibold' : ''}">${timeStr}</p>
-                    </div>
-                </div>
-            `;
-            return card;
-        }
-
-        function togglePin(event, videoId) {
-            event.preventDefault();
-            event.stopPropagation();
-            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
-            if (pinnedIds.has(videoId)) { pinnedIds.delete(videoId); } else { pinnedIds.add(videoId); }
-            localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
-            processAndRender(allVideosMaster);
-        }
-
-        function watchVideo(videoId) {
-            const video = allVideosMaster.find(v => v.id === videoId);
-            if (video && video.channelTitle) {
-                let clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
-                clicks[video.channelTitle] = (clicks[video.channelTitle] || 0) + 1;
-                localStorage.setItem('channel_clicks', JSON.stringify(clicks));
-            }
-            if (video && video.liveStatus === 'live') return;
-
-            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
-            if (pinnedIds.has(videoId)) {
-                pinnedIds.delete(videoId);
-                localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
-            }
-
-            if (viewedVideoIds.has(videoId)) return;
-            viewedVideoIds.add(videoId);
-            localStorage.setItem('viewed_video_ids', JSON.stringify([...viewedVideoIds]));
-            
-            const card = document.getElementById(`video-${videoId}`);
-            if (card) {
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.95)';
-                setTimeout(() => { 
-                    processAndRender(allVideosMaster); 
-                    fetchAndRenderHiddenKirinuki();
-                }, 250);
-            }
-        }
-
-        function filterVideos() {
-            const query = document.getElementById('filter-search').value.toLowerCase();
-            if (!query) { processAndRender(allVideosMaster); return; }
-            const filtered = allVideosMaster.filter(video => {
-                return video.title.toLowerCase().includes(query) || video.channelTitle.toLowerCase().includes(query);
-            });
-            processAndRender(filtered);
-        }
-
-        function clearAllGrids() {
-            ['live', 'upcoming', 'pinned', 'frequent', 'shorts', 'today', 'recent', 'watched'].forEach(p => {
-                const scrollArea = document.getElementById(`${p}-scroll`);
-                if(scrollArea) scrollArea.innerHTML = '';
-                const sec = document.getElementById(`${p}-section`);
-                if(sec) sec.classList.add('hidden');
-            });
-        }
-
-        function resetViewedList() {
-            if (confirm('すべての動画を未視聴の状態に戻しますか？')) {
-                localStorage.removeItem('viewed_video_ids');
-                viewedVideoIds.clear();
-                processAndRender(allVideosMaster);
-                fetchAndRenderHiddenKirinuki();
-            }
-        }
-        function resetPinnedList() {
-            if (confirm('「あとで見るキープ」のピン留めをすべて一括解除しますか？')) {
-                localStorage.removeItem('pinned_video_ids');
-                processAndRender(allVideosMaster);
-            }
-        }
-        function resetClicksList() {
-            if (confirm('チャンネルの学習履歴をすべてリセットしますか？')) {
-                localStorage.removeItem('channel_clicks');
-                processAndRender(allVideosMaster);
-            }
-        }
-
-        function formatTimeAgo(date) {
-            const diffMs = new Date() - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMins / 60);
-            const diffDays = Math.floor(diffHours / 24);
-            if (diffMins < 60) return `${diffMins}分前`;
-            if (diffHours < 24) return `${diffHours}時間前`;
-            return `${diffDays}日前`;
-        }
-
-        function formatStartTime(date) {
-            if (!date) return '開始時間未定';
-            const now = new Date();
-            const diffMs = date - now;
-            if (diffMs < 0) return 'まもなく開始 / 遅延中';
-            const diffMins = Math.floor(diffMs / 60000);
-            if (diffMins < 60) return `あと ${diffMins} 分で開始`;
-            const diffHours = Math.floor(diffMins / 60);
-            if (diffHours < 24) return `あと ${diffHours} 時間で開始`;
-            const m = date.getMonth() + 1;
-            const d = date.getDate();
-            const h = String(date.getHours()).padStart(2, '0');
-            const i = String(date.getMinutes()).padStart(2, '0');
-            return `${m}/${d} ${h}:${i} 〜`;
+            log('切り抜き巡回完了');
         }
     </script>
 </body>
