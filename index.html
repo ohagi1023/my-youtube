@@ -369,11 +369,14 @@
             if (authExpired) return;
             authExpired = true;
             accessToken = null;
-            sessionStorage.removeItem('yt_oauth_token');
+            localStorage.removeItem('yt_oauth_token');
+            localStorage.removeItem('yt_oauth_token_ts');
             showUi(false);
             const statusEl = document.getElementById('status');
             if (statusEl) statusEl.style.display = 'none';
-            alert('Googleとの連携の有効期限が切れました。もう一度「Google連携」からログインしてください。');
+            attemptSilentReauth(() => {
+                alert('Googleとの連携の有効期限が切れました。もう一度「Google連携」からログインしてください。');
+            });
         }
 
         const FILTER_KEYWORDS = {
@@ -608,26 +611,76 @@
                 client_id: CLIENT_ID,
                 scope: SCOPES,
                 callback: (tokenResponse) => {
+                    if (silentAuthTimer) { clearTimeout(silentAuthTimer); silentAuthTimer = null; }
                     if (tokenResponse && tokenResponse.access_token) {
                         accessToken = tokenResponse.access_token;
                         authExpired = false;
-                        sessionStorage.setItem('yt_oauth_token', accessToken);
+                        localStorage.setItem('yt_oauth_token', accessToken);
+                        localStorage.setItem('yt_oauth_token_ts', String(Date.now()));
                         showUi(true);
                         refreshFeed();
+                    } else if (silentAuthFailCallback) {
+                        const cb = silentAuthFailCallback;
+                        silentAuthFailCallback = null;
+                        cb();
+                    }
+                },
+                error_callback: () => {
+                    if (silentAuthTimer) { clearTimeout(silentAuthTimer); silentAuthTimer = null; }
+                    if (silentAuthFailCallback) {
+                        const cb = silentAuthFailCallback;
+                        silentAuthFailCallback = null;
+                        cb();
                     }
                 },
             });
+        }
+
+        // ─── ポップアップを出さずに再ログインを試みる（うまくいかなければonFailを呼ぶ） ───
+        let silentAuthTimer = null;
+        let silentAuthFailCallback = null;
+        function attemptSilentReauth(onFail) {
+            if (!tokenClient) { if (onFail) onFail(); return; }
+            silentAuthFailCallback = onFail || null;
+            if (silentAuthTimer) clearTimeout(silentAuthTimer);
+            silentAuthTimer = setTimeout(() => {
+                silentAuthTimer = null;
+                if (silentAuthFailCallback) {
+                    const cb = silentAuthFailCallback;
+                    silentAuthFailCallback = null;
+                    cb();
+                }
+            }, 2500);
+            try {
+                tokenClient.requestAccessToken({ prompt: '' });
+            } catch (e) {
+                if (silentAuthTimer) { clearTimeout(silentAuthTimer); silentAuthTimer = null; }
+                if (silentAuthFailCallback) {
+                    const cb = silentAuthFailCallback;
+                    silentAuthFailCallback = null;
+                    cb();
+                }
+            }
         }
 
         window.onload = function() {
             initTokenClient();
             renderAllFilterChannelChips();
             reconcileActiveQueue(); // 前回開いていた「まとめて見る」キューの経過分を反映
-            const savedToken = sessionStorage.getItem('yt_oauth_token');
-            if (savedToken) {
+
+            const savedToken = localStorage.getItem('yt_oauth_token');
+            const savedTs = parseInt(localStorage.getItem('yt_oauth_token_ts') || '0', 10);
+            const tokenAgeMs = Date.now() - savedTs;
+            const TOKEN_FRESH_MS = 55 * 60 * 1000; // トークンの寿命目安（55分以内ならそのまま使う）
+
+            if (savedToken && tokenAgeMs < TOKEN_FRESH_MS) {
                 accessToken = savedToken;
                 showUi(true);
                 refreshFeed();
+            } else if (savedToken) {
+                // 期限切れの可能性が高い → ポップアップなしでの再認証を試みる
+                showUi(false);
+                attemptSilentReauth(() => { showUi(false); });
             } else {
                 showUi(false);
             }
@@ -644,7 +697,8 @@
             if (accessToken) {
                 google.accounts.oauth2.revokeToken(accessToken, () => {
                     accessToken = null;
-                    sessionStorage.removeItem('yt_oauth_token');
+                    localStorage.removeItem('yt_oauth_token');
+                    localStorage.removeItem('yt_oauth_token_ts');
                     allVideosMaster = [];
                     mySubscribedChannels = [];
                     showUi(false);
