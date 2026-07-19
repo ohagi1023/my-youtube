@@ -77,18 +77,71 @@
                     <div>
                         <p class="text-[10px] text-zinc-500 font-bold mb-2 tracking-wider uppercase">🔍 特化フィルター</p>
                         <div class="space-y-1">
-                            <button onclick="changeFilter('endra')" id="btn-filter-endra" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
-                                🐉 エンドラRTA系
-                            </button>
-                            <button onclick="changeFilter('vtuber')" id="btn-filter-vtuber" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
-                                🛸 VTuber
-                            </button>
-                            <button onclick="changeFilter('talk_sing')" id="btn-filter-talk_sing" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
-                                💬 雑談・歌枠
-                            </button>
-                            <button onclick="changeFilter('clip')" id="btn-filter-clip" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
-                                ✂️ 切り抜き
-                            </button>
+
+                            <div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="changeFilter('endra')" id="btn-filter-endra" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
+                                        🐉 エンドラRTA系
+                                    </button>
+                                    <button onclick="toggleFilterChannelInput('endra')" class="shrink-0 text-zinc-600 hover:text-teal-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
+                                </div>
+                                <div id="filter-channel-row-endra" class="hidden pl-2 pr-1 pt-1.5 pb-1">
+                                    <div class="flex gap-1 mb-1">
+                                        <input type="text" id="filter-channel-input-endra" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
+                                        <button onclick="addFilterChannel('endra')" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                                    </div>
+                                    <div id="filter-channel-chips-endra" class="flex flex-wrap gap-1"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="changeFilter('vtuber')" id="btn-filter-vtuber" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
+                                        🛸 VTuber
+                                    </button>
+                                    <button onclick="toggleFilterChannelInput('vtuber')" class="shrink-0 text-zinc-600 hover:text-teal-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
+                                </div>
+                                <div id="filter-channel-row-vtuber" class="hidden pl-2 pr-1 pt-1.5 pb-1">
+                                    <div class="flex gap-1 mb-1">
+                                        <input type="text" id="filter-channel-input-vtuber" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
+                                        <button onclick="addFilterChannel('vtuber')" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                                    </div>
+                                    <div id="filter-channel-chips-vtuber" class="flex flex-wrap gap-1"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="changeFilter('talk_sing')" id="btn-filter-talk_sing" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
+                                        💬 雑談・歌枠
+                                    </button>
+                                    <button onclick="toggleFilterChannelInput('talk_sing')" class="shrink-0 text-zinc-600 hover:text-teal-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
+                                </div>
+                                <div id="filter-channel-row-talk_sing" class="hidden pl-2 pr-1 pt-1.5 pb-1">
+                                    <div class="flex gap-1 mb-1">
+                                        <input type="text" id="filter-channel-input-talk_sing" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
+                                        <button onclick="addFilterChannel('talk_sing')" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                                    </div>
+                                    <div id="filter-channel-chips-talk_sing" class="flex flex-wrap gap-1"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="changeFilter('clip')" id="btn-filter-clip" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
+                                        ✂️ 切り抜き
+                                    </button>
+                                    <button onclick="toggleFilterChannelInput('clip')" class="shrink-0 text-zinc-600 hover:text-teal-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
+                                </div>
+                                <div id="filter-channel-row-clip" class="hidden pl-2 pr-1 pt-1.5 pb-1">
+                                    <div class="flex gap-1 mb-1">
+                                        <input type="text" id="filter-channel-input-clip" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
+                                        <button onclick="addFilterChannel('clip')" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                                    </div>
+                                    <div id="filter-channel-chips-clip" class="flex flex-wrap gap-1"></div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
@@ -106,37 +159,14 @@
                             <span>90分+</span>
                         </div>
                     </div>
-
-                    <!-- ─── サイドバー専用・登録外切り抜きフィード ─── -->
-                    <div class="border-t border-zinc-900 pt-4 flex flex-col flex-grow">
-                        <p class="text-[10px] text-zinc-500 font-bold mb-2 tracking-wider uppercase flex justify-between items-center">
-                            <span>✂️ 登録外の推し切り抜き</span>
-                            <span id="kirinuki-count" class="text-zinc-600 text-[9px]">0本</span>
-                        </p>
-
-                        <!-- チャンネルID追加フォーム（+クリックで展開） -->
-                        <div class="flex items-center justify-between mb-2">
-                            <button onclick="toggleKirinukiInput()" id="kirinuki-add-toggle" class="text-[10px] text-zinc-500 hover:text-teal-400 transition flex items-center gap-1">
-                                <span class="text-xs leading-none font-bold">＋</span> チャンネルID追加
-                            </button>
-                        </div>
-                        <div id="kirinuki-input-row" class="hidden flex gap-1 mb-2">
-                            <input type="text" id="kirinuki-channel-input" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
-                            <button onclick="addKirinukiChannel()" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
-                        </div>
-                        <div id="custom-kirinuki-channels" class="flex flex-wrap gap-1 mb-2"></div>
-
-                        <div id="sidebar-kirinuki-list" class="space-y-2 max-h-[220px] overflow-y-auto pr-1 scroll-container text-[11px] text-zinc-500">
-                            連携すると読み込みます
-                        </div>
-                    </div>
                 </div>
 
                 <div class="pt-4 border-t border-zinc-900 text-[10px] text-zinc-700 font-mono tracking-wider mt-6 shrink-0">
-                    v8.5
+                    v8.6
                 </div>
             </div>
         </aside>
+
 
         <!-- ─── 📺 右側：メインコンテンツ ─── -->
         <main class="flex-grow p-4 md:p-8 max-w-7xl">
@@ -230,7 +260,7 @@
         let accessToken = null;
         let allVideosMaster = []; 
         let mySubscribedChannels = []; 
-        let kirinukiMatchedVideos = []; // 「登録外の推し切り抜き」に該当した動画（切り抜きフィルターで合流表示用）
+        let categoryExtraVideos = { endra: [], vtuber: [], talk_sing: [], clip: [] }; // 各特化フィルター専用チャンネルの動画
         let viewedVideoIds = new Set(JSON.parse(localStorage.getItem('viewed_video_ids') || '[]'));
         
         let currentFilter = 'all'; 
@@ -256,16 +286,22 @@
             clip: ['切り抜き', 'まとめ', '名場面', 'clips']
         };
 
-        const HIDDEN_KIRINUKI_CHANNELS = [
-            'UCoM5tr4Uf8qYDe48IOyMLNw',
-            'UCZ_Gm9ipdFovmM8Pf9f-_Ww',
-            'UC2bTmb1UK1gv9rAvjiORRuQ',
-            'UC0_zoJAoiwQSMFdMjkGatAQ',
-            'UCzfEOwQSg1OMcwgtV6u1_kA',
-            'UCIOwdHIKvZbkJWabnl-Mb0Q',
-            'UCTqaQDh8fiakSnhi0xHeArw',
-            'UC04LmK8LzR09018BJ4mDAAw'
-        ];
+        // 各特化フィルターにデフォルトで紐づく推しチャンネル（自由に追加・削除可）
+        const FILTER_CHANNEL_DEFAULTS = {
+            endra: [],
+            vtuber: [],
+            talk_sing: [],
+            clip: [
+                'UCoM5tr4Uf8qYDe48IOyMLNw',
+                'UCZ_Gm9ipdFovmM8Pf9f-_Ww',
+                'UC2bTmb1UK1gv9rAvjiORRuQ',
+                'UC0_zoJAoiwQSMFdMjkGatAQ',
+                'UCzfEOwQSg1OMcwgtV6u1_kA',
+                'UCIOwdHIKvZbkJWabnl-Mb0Q',
+                'UCTqaQDh8fiakSnhi0xHeArw',
+                'UC04LmK8LzR09018BJ4mDAAw'
+            ]
+        };
 
         // ─────────────────────────────────────────────
         // 🗄️ APIキャッシュ層（消費量削減用）
@@ -342,27 +378,30 @@
         }
 
         // ─────────────────────────────────────────────
-        // 🔑 チャンネルID直接追加（切り抜き巡回リスト）
+        // 🔑 チャンネルID直接追加（フィルターカテゴリごと）
         // ─────────────────────────────────────────────
-        function getCustomKirinukiChannels() {
-            return safeGetJSON('custom_kirinuki_channels', []);
+        const FILTER_CATEGORIES = ['endra', 'vtuber', 'talk_sing', 'clip'];
+
+        function getCustomFilterChannels(category) {
+            const all = safeGetJSON('custom_filter_channels', {});
+            return all[category] || [];
         }
-        function getKirinukiChannels() {
-            return [...new Set([...HIDDEN_KIRINUKI_CHANNELS, ...getCustomKirinukiChannels()])];
+        function getFilterChannels(category) {
+            return [...new Set([...(FILTER_CHANNEL_DEFAULTS[category] || []), ...getCustomFilterChannels(category)])];
         }
-        function toggleKirinukiInput() {
-            const row = document.getElementById('kirinuki-input-row');
+        function toggleFilterChannelInput(category) {
+            const row = document.getElementById(`filter-channel-row-${category}`);
             if (!row) return;
             const isHidden = row.classList.contains('hidden');
             if (isHidden) {
                 row.classList.remove('hidden');
-                document.getElementById('kirinuki-channel-input').focus();
+                document.getElementById(`filter-channel-input-${category}`).focus();
             } else {
                 row.classList.add('hidden');
             }
         }
-        function addKirinukiChannel() {
-            const input = document.getElementById('kirinuki-channel-input');
+        function addFilterChannel(category) {
+            const input = document.getElementById(`filter-channel-input-${category}`);
             const raw = input.value.trim();
             if (!raw) return;
 
@@ -375,29 +414,32 @@
                 return;
             }
 
-            const custom = getCustomKirinukiChannels();
-            if (HIDDEN_KIRINUKI_CHANNELS.includes(channelId) || custom.includes(channelId)) {
+            const all = safeGetJSON('custom_filter_channels', {});
+            if (!all[category]) all[category] = [];
+            const defaults = FILTER_CHANNEL_DEFAULTS[category] || [];
+            if (defaults.includes(channelId) || all[category].includes(channelId)) {
                 alert('すでに登録済みのチャンネルIDです。');
                 return;
             }
-            custom.push(channelId);
-            safeSetJSON('custom_kirinuki_channels', custom);
+            all[category].push(channelId);
+            safeSetJSON('custom_filter_channels', all);
             input.value = '';
-            document.getElementById('kirinuki-input-row').classList.add('hidden');
-            renderCustomKirinukiChips();
-            fetchAndRenderHiddenKirinuki();
+            document.getElementById(`filter-channel-row-${category}`).classList.add('hidden');
+            renderFilterChannelChips(category);
+            fetchCategoryExtraVideos(category);
         }
-        function removeKirinukiChannel(channelId) {
-            let custom = getCustomKirinukiChannels();
-            custom = custom.filter(id => id !== channelId);
-            safeSetJSON('custom_kirinuki_channels', custom);
-            renderCustomKirinukiChips();
-            fetchAndRenderHiddenKirinuki();
+        function removeFilterChannel(category, channelId) {
+            const all = safeGetJSON('custom_filter_channels', {});
+            if (!all[category]) return;
+            all[category] = all[category].filter(id => id !== channelId);
+            safeSetJSON('custom_filter_channels', all);
+            renderFilterChannelChips(category);
+            fetchCategoryExtraVideos(category);
         }
-        function renderCustomKirinukiChips() {
-            const wrap = document.getElementById('custom-kirinuki-channels');
+        function renderFilterChannelChips(category) {
+            const wrap = document.getElementById(`filter-channel-chips-${category}`);
             if (!wrap) return;
-            const custom = getCustomKirinukiChannels();
+            const custom = getCustomFilterChannels(category);
             wrap.innerHTML = '';
             custom.forEach(id => {
                 const chip = document.createElement('span');
@@ -407,10 +449,61 @@
                 btn.textContent = '×';
                 btn.title = '削除';
                 btn.className = 'text-zinc-600 hover:text-red-400 px-1 leading-none';
-                btn.onclick = () => removeKirinukiChannel(id);
+                btn.onclick = () => removeFilterChannel(category, id);
                 chip.appendChild(btn);
                 wrap.appendChild(chip);
             });
+        }
+        function renderAllFilterChannelChips() {
+            FILTER_CATEGORIES.forEach(renderFilterChannelChips);
+        }
+
+        // 特定カテゴリ専用チャンネルの最新動画を取得し、そのフィルターが選択中なら再描画
+        async function fetchCategoryExtraVideos(category) {
+            const channels = getFilterChannels(category);
+            if (channels.length === 0) {
+                categoryExtraVideos[category] = [];
+                if (currentFilter === category) processAndRender(allVideosMaster);
+                return;
+            }
+
+            let videoIds = [];
+            try {
+                const promises = channels.map(async (chId) => {
+                    const cachedIds = getCachedPlaylist(chId);
+                    if (cachedIds) return cachedIds;
+                    const uploadPlaylistId = 'UU' + chId.substring(2);
+                    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=5`;
+                    try {
+                        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                        if (res.status === 401) { handleExpiredToken(); return []; }
+                        const data = await res.json();
+                        const ids = data.items ? data.items.map(i => i.snippet?.resourceId?.videoId).filter(Boolean) : [];
+                        setCachedPlaylist(chId, ids);
+                        return ids;
+                    } catch (e) { return []; }
+                });
+
+                const results = await Promise.all(promises);
+                if (authExpired) return;
+                results.forEach(ids => { videoIds = videoIds.concat(ids); });
+
+                if (videoIds.length === 0) {
+                    categoryExtraVideos[category] = [];
+                    if (currentFilter === category) processAndRender(allVideosMaster);
+                    return;
+                }
+
+                const videos = await fetchVideoDetails(videoIds);
+                if (authExpired) return;
+                categoryExtraVideos[category] = videos;
+                if (currentFilter === category) processAndRender(allVideosMaster);
+            } catch (err) {
+                console.error(`Category extra fetch error (${category}):`, err);
+            }
+        }
+        async function fetchAllCategoryExtraVideos() {
+            await Promise.all(FILTER_CATEGORIES.map(cat => fetchCategoryExtraVideos(cat)));
         }
 
         function initTokenClient() {
@@ -431,7 +524,7 @@
 
         window.onload = function() {
             initTokenClient();
-            renderCustomKirinukiChips();
+            renderAllFilterChannelChips();
             const savedToken = sessionStorage.getItem('yt_oauth_token');
             if (savedToken) {
                 accessToken = savedToken;
@@ -469,7 +562,6 @@
             statusEl.style.display = 'block';
             statusEl.innerText = '登録チャンネルを取得中...';
             clearAllGrids();
-            document.getElementById('sidebar-kirinuki-list').innerText = '巡回中...';
 
             try {
                 // ─── 登録チャンネル一覧: キャッシュがあれば使い回してAPIコールを節約 ───
@@ -522,104 +614,12 @@
                 statusEl.style.display = 'none';
                 processAndRender(allVideosMaster);
 
-                // ─── メイン描画が終わってから安全に切り抜き巡回をキック ───
-                await fetchAndRenderHiddenKirinuki();
+                // ─── メイン描画が終わってから、各特化フィルター専用チャンネルの動画を取得 ───
+                await fetchAllCategoryExtraVideos();
 
             } catch (err) {
                 console.error(err);
                 statusEl.innerText = 'エラーが発生しました。再読み込みしてください。';
-            }
-        }
-
-        async function fetchAndRenderHiddenKirinuki() {
-            const kirinukiListEl = document.getElementById('sidebar-kirinuki-list');
-            if (!kirinukiListEl) return;
-            
-            let kirinukiVideoIds = [];
-            const targetChannels = getKirinukiChannels();
-
-            try {
-                const promises = targetChannels.map(async (chId) => {
-                    // ─── 切り抜きチャンネルの新着ID一覧もキャッシュ対象に ───
-                    const cachedIds = getCachedPlaylist(chId);
-                    if (cachedIds) return cachedIds;
-
-                    const uploadPlaylistId = 'UU' + chId.substring(2);
-                    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=5`;
-                    try {
-                        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                        if (res.status === 401) { handleExpiredToken(); return []; }
-                        const data = await res.json();
-                        const ids = data.items ? data.items.map(i => i.snippet?.resourceId?.videoId).filter(Boolean) : [];
-                        setCachedPlaylist(chId, ids);
-                        return ids;
-                    } catch (e) { return []; }
-                });
-
-                const results = await Promise.all(promises);
-                if (authExpired) return;
-                results.forEach(ids => { kirinukiVideoIds = kirinukiVideoIds.concat(ids); });
-
-                if (kirinukiVideoIds.length === 0) {
-                    kirinukiListEl.innerText = '新しい推しの切り抜きはありません';
-                    document.getElementById('kirinuki-count').innerText = '0本';
-                    kirinukiMatchedVideos = [];
-                    if (currentFilter === 'clip') processAndRender(allVideosMaster);
-                    return;
-                }
-
-                const kirinukiVideos = await fetchVideoDetails(kirinukiVideoIds);
-                if (authExpired) return;
-                
-                // 安全ガード付き検門フィルター
-                const matchedKirinuki = kirinukiVideos.filter(v => {
-                    if (!v || !v.title) return false;
-                    const titleLower = v.title.toLowerCase();
-                    
-                    const hasSubscribedName = mySubscribedChannels.some(chName => {
-                        if (!chName || chName.length < 3) return false;
-                        return titleLower.includes(chName);
-                    });
-                    
-                    const hasBoxName = ['ぶいすぽ', 'ネオポルテ', 'neo-porte', 'ミリプロ'].some(box => titleLower.includes(box));
-                    
-                    return (hasSubscribedName || hasBoxName) && !viewedVideoIds.has(v.id);
-                });
-
-                matchedKirinuki.sort((a, b) => b.publishedAt - a.publishedAt);
-                kirinukiMatchedVideos = matchedKirinuki;
-
-                kirinukiListEl.innerHTML = '';
-                const countEl = document.getElementById('kirinuki-count');
-                if (countEl) countEl.innerText = `${matchedKirinuki.length}本`;
-
-                if (matchedKirinuki.length === 0) {
-                    kirinukiListEl.innerText = '新しい推しの切り抜きはありません';
-                    if (currentFilter === 'clip') processAndRender(allVideosMaster);
-                    return;
-                }
-
-                matchedKirinuki.forEach(v => {
-                    const div = document.createElement('div');
-                    div.className = 'p-1.5 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-900 rounded-lg flex gap-2 transition group relative';
-                    div.innerHTML = `
-                        <div class="w-16 h-9 shrink-0 bg-black rounded overflow-hidden relative">
-                            <img src="${v.thumbnail}" class="w-full h-full object-cover">
-                        </div>
-                        <div class="flex flex-col justify-between min-w-0 flex-grow">
-                            <a href="${v.url}" target="_blank" onclick="watchVideo('${v.id}')" class="font-medium text-zinc-300 line-clamp-2 hover:text-teal-400 leading-tight tracking-wide group-hover:underline">
-                                ${v.title}
-                            </a>
-                            <p class="text-[9px] text-zinc-600 truncate mt-0.5">${v.channelTitle}</p>
-                        </div>
-                    `;
-                    kirinukiListEl.appendChild(div);
-                });
-
-                if (currentFilter === 'clip') processAndRender(allVideosMaster);
-            } catch (err) {
-                console.error("Kirinuki fetch error:", err);
-                kirinukiListEl.innerText = '切り抜きの取得に失敗しました';
             }
         }
 
@@ -723,13 +723,16 @@
             
             const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
 
-            // ─── 切り抜きフィルター選択中は「登録外の推し切り抜き」もプールに合流 ───
+            // ─── 特化フィルター選択中は、そのフィルター専用チャンネルの動画もプールに合流 ───
             let pool = videos;
-            const kirinukiIdSet = new Set();
-            if (currentFilter === 'clip' && kirinukiMatchedVideos.length > 0) {
-                kirinukiMatchedVideos.forEach(v => kirinukiIdSet.add(v.id));
-                const extra = kirinukiMatchedVideos.filter(v => !videos.some(x => x.id === v.id));
-                pool = videos.concat(extra);
+            const extraIdSet = new Set();
+            if (currentFilter !== 'all') {
+                const extraVideos = categoryExtraVideos[currentFilter] || [];
+                if (extraVideos.length > 0) {
+                    extraVideos.forEach(v => extraIdSet.add(v.id));
+                    const extra = extraVideos.filter(v => !videos.some(x => x.id === v.id));
+                    pool = videos.concat(extra);
+                }
             }
 
             let filtered = pool.filter(v => 
@@ -737,13 +740,13 @@
                 v.liveStatus === 'upcoming' || 
                 v.publishedAt >= threeDaysAgo ||
                 pinnedIds.has(v.id) ||
-                kirinukiIdSet.has(v.id)
+                extraIdSet.has(v.id)
             );
 
             if (currentFilter !== 'all') {
                 const keywords = FILTER_KEYWORDS[currentFilter];
                 filtered = filtered.filter(v => {
-                    if (kirinukiIdSet.has(v.id)) return true; // 登録外の推し切り抜きはキーワード判定を免除
+                    if (extraIdSet.has(v.id)) return true; // フィルター専用チャンネルはキーワード判定を免除
                     const titleLower = v.title.toLowerCase();
                     const channelLower = v.channelTitle.toLowerCase();
                     return keywords.some(kw => titleLower.includes(kw) || channelLower.includes(kw));
@@ -901,7 +904,6 @@
                 card.style.transform = 'scale(0.95)';
                 setTimeout(() => { 
                     processAndRender(allVideosMaster); 
-                    fetchAndRenderHiddenKirinuki();
                 }, 250);
             }
         }
@@ -929,7 +931,6 @@
                 localStorage.removeItem('viewed_video_ids');
                 viewedVideoIds.clear();
                 processAndRender(allVideosMaster);
-                fetchAndRenderHiddenKirinuki();
             }
         }
         function resetPinnedList() {
