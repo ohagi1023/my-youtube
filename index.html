@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My YouTube Feed - v4</title>
+    <!-- Google Identity Services SDK (ログイン用) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        :root {
+            --bg-main: #0f0f0f;
+            --bg-card: #1f1f1f;
+            --text-main: #f1f1f1;
+            --text-sub: #aaa;
+            --accent: #ff0000;
+            --accent-hover: #cc0000;
+            --border: #2f2f2f;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-area h1 {
+            margin: 0;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-area span {
+            font-size: 12px;
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #ff4500;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background-color: var(--accent-hover); }
+        .btn-secondary { background-color: #272727; color: var(--text-main); }
+        .btn-secondary:hover { background-color: #3f3f3f; }
+        
+        .filter-bar {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            background: #222;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            flex-grow: 1;
+            max-width: 400px;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: 1px solid #555;
+        }
+
+        #status {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-sub);
+            font-size: 15px;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .video-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .video-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+
+        .thumbnail-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+        }
+
+        .thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-detail {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .video-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 6px 0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            color: var(--text-main);
+            text-decoration: none;
+        }
+
+        .video-title:hover { color: #fff; text-decoration: underline; }
+        
+        .channel-name {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin: 0 0 6px 0;
+        }
+
+        .video-meta {
+            font-size: 11px;
+            color: #777;
+            margin: auto 0 0 0;
+        }
+        
+        .login-box {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <h1>My YouTube Feed <span>v4 完全連動版</span></h1>
+            </div>
+            <div class="controls">
+                <button id="login-btn" class="btn" onclick="handleAuthClick()">Googleアカウントでログイン</button>
+                <button id="logout-btn" class="btn btn-secondary" onclick="handleSignoutClick()" style="display: none;">ログアウト</button>
+            </div>
+        </header>
+
+        <!-- ログイン後に表示されるメインコンテンツ -->
+        <div id="main-content" style="display: none;">
+            <div class="filter-bar">
+                <input type="text" id="filter-search" class="search-input" placeholder="タイトルやチャンネル名でリアルタイム絞り込み..." oninput="filterVideos()">
+                <button class="btn btn-secondary" onclick="refreshFeed()">フィードを更新</button>
+            </div>
+            <div id="status">動画を読み込んでいます...</div>
+            <div id="video-grid" class="video-grid"></div>
+        </div>
+
+        <!-- ログイン前に表示されるウェルカム画面 -->
+        <div id="welcome-content" class="login-box">
+            <h2>あなた専用のYouTube特化フィード</h2>
+            <p style="color: var(--text-sub); max-width: 500px; margin: 10px auto 30px auto; font-size: 14px; line-height: 1.6;">
+                ログインすると、あなたの登録チャンネルから最新動画を自動でまとめて一本のタイムラインにします。広告や無関係なおすすめに邪魔されず、効率よくチェック可能です。
+            </p>
+            <button class="btn" style="padding: 12px 30px; font-size: 15px;" onclick="handleAuthClick()">連携を開始する</button>
+        </div>
+    </div>
+
+    <script>
+        // 先ほど取得したクライアントIDをセット
+        const CLIENT_ID = '617132904694-v3buugv4jh6pjp9bntcn08q8ekl8ciu5.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/youtube.readonly';
+
+        let tokenClient;
+        let accessToken = null;
+        let allVideosMaster = []; // フィルター検索用のマスター配列
+
+        // Google Identity Services の初期化
+        function initTokenClient() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        accessToken = tokenResponse.access_token;
+                        // リロード時のためにセッションに一時保存
+                        sessionStorage.setItem('yt_oauth_token', accessToken);
+                        showUi(true);
+                        refreshFeed();
+                    }
+                },
+            });
+        }
+
+        window.onload = function() {
+            initTokenClient();
+            // ブラウザのセッションにトークンが残っていれば自動ログイン
+            const savedToken = sessionStorage.getItem('yt_oauth_token');
+            if (savedToken) {
+                accessToken = savedToken;
+                showUi(true);
+                refreshFeed();
+            } else {
+                showUi(false);
+            }
+        };
+
+        function handleAuthClick() {
+            // Googleのログイン画面（アカウント選択）をポップアップ
+            tokenClient.requestAccessToken({ prompt: 'select_account' });
+        }
+
+        function handleSignoutClick() {
+            if (accessToken) {
+                google.accounts.oauth2.revokeToken(accessToken, () => {
+                    accessToken = null;
+                    sessionStorage.removeItem('yt_oauth_token');
+                    allVideosMaster = [];
+                    showUi(false);
+                });
+            }
+        }
+
+        function showUi(isLoggedIn) {
+            document.getElementById('login-btn').style.display = isLoggedIn ? 'none' : 'block';
+            document.getElementById('logout-btn').style.display = isLoggedIn ? 'block' : 'none';
+            document.getElementById('main-content').style.display = isLoggedIn ? 'block' : 'none';
+            document.getElementById('welcome-content').style.display = isLoggedIn ? 'none' : 'block';
+        }
+
+        // 登録チャンネルから動画を一括取得
+        async function refreshFeed() {
+            const statusEl = document.getElementById('status');
+            const gridEl = document.getElementById('video-grid');
+            statusEl.style.display = 'block';
+            statusEl.innerText = '登録チャンネルを取得中...';
+            gridEl.innerHTML = '';
+            allVideosMaster = [];
+
+            try {
+                // 1. 自分の「チャンネル登録リスト」を取得 (最大50件)
+                const subUrl = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50`;
+                const subRes = await fetch(subUrl, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                
+                if (subRes.status === 401) {
+                    statusEl.innerText = 'セッションが切れました。再度ログインしてください。';
+                    handleSignoutClick();
+                    return;
+                }
+                
+                const subData = await subRes.json();
+                if (!subData.items || subData.items.length === 0) {
+                    statusEl.innerText = '登録チャンネルが見つかりませんでした。';
+                    return;
+                }
+
+                statusEl.innerText = `${subData.items.length}個のチャンネルから新着動画を解析中...`;
+
+                // 2. 【超高速・低コストハック】
+                // 通常、各チャンネルの動画を調べるのはAPI制限が厳しいですが、
+                // チャンネルIDの「UC...」の2文字目を「UU...」に変えると、そのチャンネルの「アップロード動画一覧プレイリストID」になる特性を利用します。
+                const fetchPromises = subData.items.map(async (item) => {
+                    const channelId = item.snippet.resourceId.channelId;
+                    const uploadPlaylistId = 'UU' + channelId.substring(2); // UCxxx を UUxxx に変換
+                    
+                    // 各チャンネルから最新の3件ずつを取得
+                    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=3`;
+                    try {
+                        const res = await fetch(playlistUrl, {
+                            headers: { 'Authorization': `Bearer ${accessToken}` }
+                        });
+                        const data = await res.json();
+                        return data.items || [];
+                    } catch (e) {
+                        console.error('読み込み失敗:', channelId, e);
+                        return [];
+                    }
+                });
+
+                // すべてのチャンネルの通信を並列で同時に走らせる（爆速化）
+                const results = await Promise.all(fetchPromises);
+                
+                // 取得した動画を1つの配列にまとめる
+                results.forEach(videoList => {
+                    videoList.forEach(video => {
+                        allVideosMaster.push(video);
+                    });
+                });
+
+                // すべての新着動画を、公開日時が「新しい順」になるよう並び替え
+                allVideosMaster.sort((a, b) => {
+                    return new Date(b.snippet.publishedAt) - new Date(a.snippet.publishedAt);
+                });
+
+                statusEl.style.display = 'none';
+                renderVideos(allVideosMaster);
+
+            } catch (err) {
+                console.error(err);
+                statusEl.innerText = 'データの読み込み中にエラーが発生しました。Google Cloud側の設定（テストユーザーなど）を確認してください。';
+            }
+        }
+
+        // 画面に動画カードを描画する
+        function renderVideos(videos) {
+            const gridEl = document.getElementById('video-grid');
+            gridEl.innerHTML = '';
+
+            if (videos.length === 0) {
+                gridEl.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:#777; padding:40px;">表示する動画がありません。</div>';
+                return;
+            }
+
+            videos.forEach(video => {
+                const snippet = video.snippet;
+                const videoId = snippet.resourceId ? snippet.resourceId.videoId : '';
+                if (!videoId) return;
+
+                // 日付を読みやすくフォーマット
+                const pubDate = new Date(snippet.publishedAt).toLocaleString('ja-JP', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    <div class="thumbnail-container">
+                        <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank">
+                            <img class="thumbnail" src="${snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || ''}" alt="thumbnail">
+                        </a>
+                    </div>
+                    <div class="video-detail">
+                        <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="video-title" title="${snippet.title}">
+                            ${snippet.title}
+                        </a>
+                        <p class="channel-name">${snippet.channelTitle}</p>
+                        <p class="video-meta">${pubDate} 本着</p>
+                    </div>
+                `;
+                gridEl.appendChild(card);
+            });
+        }
+
+        // キーワードによるリアルタイム検索（フィルタリング）
+        function filterVideos() {
+            const query = document.getElementById('filter-search').value.toLowerCase();
+            if (!query) {
+                renderVideos(allVideosMaster);
+                return;
+            }
+
+            const filtered = allVideosMaster.filter(video => {
+                const title = video.snippet.title.toLowerCase();
+                const channel = video.snippet.channelTitle.toLowerCase();
+                return title.includes(query) || channel.includes(query);
+            });
+
+            renderVideos(filtered);
+        }
+    </script>
+</body>
+</html>
