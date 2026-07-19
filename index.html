@@ -60,6 +60,9 @@
                 border-right-width: 0;
             }
         }
+        #sidebar-overlay {
+            display: none;
+        }
         @media (max-width: 767px) {
             #sidebar-aside {
                 position: fixed;
@@ -74,9 +77,6 @@
             }
             body:not(.sidebar-closed) #sidebar-aside {
                 transform: translateX(0);
-            }
-            #sidebar-overlay {
-                display: none;
             }
             body:not(.sidebar-closed) #sidebar-overlay {
                 display: block;
