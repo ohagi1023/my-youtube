@@ -976,12 +976,11 @@
             const frequentChannels = Object.keys(clicks).filter(title => clicks[title] >= 2);
 
             const liveList = unviewed.filter(v => v.liveStatus === 'live');
-            const STALE_UPCOMING_MS = 3 * 60 * 60 * 1000; // 基準時刻から3時間以上経過したら「終了済み/中止」とみなす
             const upcomingList = unviewed.filter(v => {
                 if (v.liveStatus !== 'upcoming') return false;
                 const refTime = v.scheduledStartTime || v.publishedAt; // 予定時刻が無い場合は公開日時で代用
                 if (!refTime) return true;
-                return (now - refTime) < STALE_UPCOMING_MS;
+                return refTime >= now; // 現在時刻より前のものは表示しない
             }).sort((a, b) => {
                 if (!a.scheduledStartTime) return 1;
                 if (!b.scheduledStartTime) return -1;
