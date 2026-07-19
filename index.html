@@ -114,8 +114,13 @@
                             <span id="kirinuki-count" class="text-zinc-600 text-[9px]">0本</span>
                         </p>
 
-                        <!-- チャンネルID追加フォーム -->
-                        <div class="flex gap-1 mb-2">
+                        <!-- チャンネルID追加フォーム（+クリックで展開） -->
+                        <div class="flex items-center justify-between mb-2">
+                            <button onclick="toggleKirinukiInput()" id="kirinuki-add-toggle" class="text-[10px] text-zinc-500 hover:text-teal-400 transition flex items-center gap-1">
+                                <span class="text-xs leading-none font-bold">＋</span> チャンネルID追加
+                            </button>
+                        </div>
+                        <div id="kirinuki-input-row" class="hidden flex gap-1 mb-2">
                             <input type="text" id="kirinuki-channel-input" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
                             <button onclick="addKirinukiChannel()" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
                         </div>
@@ -225,6 +230,7 @@
         let accessToken = null;
         let allVideosMaster = []; 
         let mySubscribedChannels = []; 
+        let kirinukiMatchedVideos = []; // 「登録外の推し切り抜き」に該当した動画（切り抜きフィルターで合流表示用）
         let viewedVideoIds = new Set(JSON.parse(localStorage.getItem('viewed_video_ids') || '[]'));
         
         let currentFilter = 'all'; 
@@ -344,6 +350,17 @@
         function getKirinukiChannels() {
             return [...new Set([...HIDDEN_KIRINUKI_CHANNELS, ...getCustomKirinukiChannels()])];
         }
+        function toggleKirinukiInput() {
+            const row = document.getElementById('kirinuki-input-row');
+            if (!row) return;
+            const isHidden = row.classList.contains('hidden');
+            if (isHidden) {
+                row.classList.remove('hidden');
+                document.getElementById('kirinuki-channel-input').focus();
+            } else {
+                row.classList.add('hidden');
+            }
+        }
         function addKirinukiChannel() {
             const input = document.getElementById('kirinuki-channel-input');
             const raw = input.value.trim();
@@ -366,6 +383,7 @@
             custom.push(channelId);
             safeSetJSON('custom_kirinuki_channels', custom);
             input.value = '';
+            document.getElementById('kirinuki-input-row').classList.add('hidden');
             renderCustomKirinukiChips();
             fetchAndRenderHiddenKirinuki();
         }
@@ -545,6 +563,8 @@
                 if (kirinukiVideoIds.length === 0) {
                     kirinukiListEl.innerText = '新しい推しの切り抜きはありません';
                     document.getElementById('kirinuki-count').innerText = '0本';
+                    kirinukiMatchedVideos = [];
+                    if (currentFilter === 'clip') processAndRender(allVideosMaster);
                     return;
                 }
 
@@ -567,6 +587,7 @@
                 });
 
                 matchedKirinuki.sort((a, b) => b.publishedAt - a.publishedAt);
+                kirinukiMatchedVideos = matchedKirinuki;
 
                 kirinukiListEl.innerHTML = '';
                 const countEl = document.getElementById('kirinuki-count');
@@ -574,6 +595,7 @@
 
                 if (matchedKirinuki.length === 0) {
                     kirinukiListEl.innerText = '新しい推しの切り抜きはありません';
+                    if (currentFilter === 'clip') processAndRender(allVideosMaster);
                     return;
                 }
 
@@ -593,6 +615,8 @@
                     `;
                     kirinukiListEl.appendChild(div);
                 });
+
+                if (currentFilter === 'clip') processAndRender(allVideosMaster);
             } catch (err) {
                 console.error("Kirinuki fetch error:", err);
                 kirinukiListEl.innerText = '切り抜きの取得に失敗しました';
@@ -699,16 +723,27 @@
             
             const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
 
-            let filtered = videos.filter(v => 
+            // ─── 切り抜きフィルター選択中は「登録外の推し切り抜き」もプールに合流 ───
+            let pool = videos;
+            const kirinukiIdSet = new Set();
+            if (currentFilter === 'clip' && kirinukiMatchedVideos.length > 0) {
+                kirinukiMatchedVideos.forEach(v => kirinukiIdSet.add(v.id));
+                const extra = kirinukiMatchedVideos.filter(v => !videos.some(x => x.id === v.id));
+                pool = videos.concat(extra);
+            }
+
+            let filtered = pool.filter(v => 
                 v.liveStatus === 'live' || 
                 v.liveStatus === 'upcoming' || 
                 v.publishedAt >= threeDaysAgo ||
-                pinnedIds.has(v.id)
+                pinnedIds.has(v.id) ||
+                kirinukiIdSet.has(v.id)
             );
 
             if (currentFilter !== 'all') {
                 const keywords = FILTER_KEYWORDS[currentFilter];
                 filtered = filtered.filter(v => {
+                    if (kirinukiIdSet.has(v.id)) return true; // 登録外の推し切り抜きはキーワード判定を免除
                     const titleLower = v.title.toLowerCase();
                     const channelLower = v.channelTitle.toLowerCase();
                     return keywords.some(kw => titleLower.includes(kw) || channelLower.includes(kw));
