@@ -997,25 +997,43 @@
         // ─── セクションの動画をまとめてキュー再生（YouTubeの一時プレイリスト機能を利用） ───
         function playSectionQueue(prefix) {
             const list = renderedSectionVideos[prefix] || [];
-            const ids = list.filter(v => v.liveStatus !== 'live').map(v => v.id);
-            if (ids.length === 0) return;
+            const targets = list.filter(v => v.liveStatus !== 'live');
+            if (targets.length === 0) return;
 
-            // クリックしたのと同様に、視聴済み・学習履歴・ピン解除を一括反映
+            // 学習履歴（よく見るチャンネル判定）はキュー開始時点で加算
             const clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
-            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
-            list.forEach(v => {
+            targets.forEach(v => {
                 if (v.channelTitle) clicks[v.channelTitle] = (clicks[v.channelTitle] || 0) + 1;
-                if (v.liveStatus !== 'live') viewedVideoIds.add(v.id);
-                pinnedIds.delete(v.id);
             });
             localStorage.setItem('channel_clicks', JSON.stringify(clicks));
-            localStorage.setItem('viewed_video_ids', JSON.stringify([...viewedVideoIds]));
-            localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
 
+            const ids = targets.map(v => v.id);
             const url = ids.length === 1
                 ? `https://www.youtube.com/watch?v=${ids[0]}`
                 : `https://www.youtube.com/watch_videos?video_ids=${ids.slice(0, 50).join(',')}`;
             window.open(url, '_blank');
+
+            // ─── 動画の長さ分の時間が経過したら、順番に「視聴済み」として反映（推定方式） ───
+            // ※ このタブを開いたままにしておく必要があります（閉じるとタイマーが失われます）
+            let elapsedMs = 0;
+            targets.forEach(v => {
+                const seconds = parseDurationToSeconds(v.duration) || 180; // 長さ不明の場合は3分とみなす
+                elapsedMs += seconds * 1000;
+                setTimeout(() => markVideoWatchedSilently(v.id), elapsedMs);
+            });
+        }
+
+        // 「まとめて見る」の推定視聴済みマーク用（カードのフェードアニメーションなしで即反映）
+        function markVideoWatchedSilently(videoId) {
+            if (viewedVideoIds.has(videoId)) return;
+            viewedVideoIds.add(videoId);
+            localStorage.setItem('viewed_video_ids', JSON.stringify([...viewedVideoIds]));
+
+            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            if (pinnedIds.has(videoId)) {
+                pinnedIds.delete(videoId);
+                localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
+            }
 
             processAndRender(allVideosMaster);
         }
