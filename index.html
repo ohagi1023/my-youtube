@@ -26,7 +26,7 @@
             background: #71717a;
         }
         
-        /* シネマ風ホバーエフェクト（上に少し浮き上がり、滑らかな影を落とす） */
+        /* シネマ風ホバーエフェクト */
         .video-card { 
             transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
         }
@@ -92,34 +92,50 @@
                 <div id="live-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
             </div>
 
+            <!-- ─── ⏰ 配信予定の待機所 ─── -->
+            <div id="upcoming-section" class="mb-10 hidden">
+                <h2 class="text-sm font-bold text-amber-500 tracking-wider flex items-center gap-2 mb-4">
+                    ⏰ 配信予定の待機所
+                </h2>
+                <div id="upcoming-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
+            </div>
+
+            <!-- ─── 📌 あとで見るキープ ─── -->
+            <div id="pinned-section" class="mb-10 p-4 bg-teal-950/10 border border-teal-900/30 rounded-2xl hidden">
+                <h2 class="text-sm font-bold text-teal-400 tracking-wider flex items-center gap-2 mb-4">
+                    📌 あとで見るキープ
+                </h2>
+                <div id="pinned-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
+            </div>
+
             <!-- ─── 🔥 よく見るチャンネル ─── -->
             <div id="frequent-section" class="mb-10 p-4 bg-zinc-900/20 border border-zinc-900 rounded-2xl hidden">
                 <h2 class="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400 tracking-wider flex items-center gap-2 mb-4">
-                    🔥 あなたの特別枠（よく見るチャンネル）
+                    🔥 あなたの特別枠
                 </h2>
                 <div id="frequent-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
             </div>
 
-            <!-- ─── 📱 Shorts（3分以内） ─── -->
+            <!-- ─── 📱 Shorts ─── -->
             <div id="shorts-section" class="mb-10 hidden">
                 <h2 class="text-sm font-bold text-red-400 tracking-wider flex items-center gap-2 mb-4">
-                    📱 縦型ショート（3分以内・よく見る順）
+                    📱 縦型ショート
                 </h2>
                 <div id="shorts-scroll" class="flex overflow-x-auto gap-3 pb-4 scroll-container"></div>
             </div>
 
-            <!-- ─── ✨ 本日の動画（24時間以内） ─── -->
+            <!-- ─── ✨ 本日の動画 ─── -->
             <div id="today-section" class="mb-10 hidden">
                 <h2 class="text-sm font-bold text-zinc-300 tracking-wider flex items-center gap-2 mb-4">
-                    ✨ 本日の新着（24時間以内）
+                    ✨ 本日の新着
                 </h2>
                 <div id="today-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
             </div>
 
-            <!-- ─── 📅 最近の動画（3日以内） ─── -->
+            <!-- ─── 📅 最近の動画 ─── -->
             <div id="recent-section" class="mb-10 hidden">
                 <h2 class="text-sm font-bold text-zinc-500 tracking-wider flex items-center gap-2 mb-4">
-                    📅 最近の投稿（3日以内）
+                    📅 最近の投稿
                 </h2>
                 <div id="recent-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
             </div>
@@ -139,10 +155,13 @@
             </div>
         </div>
 
-        <!-- フッター（設定・リセット関係はひっそりと格納） -->
+        <!-- フッター -->
         <footer class="mt-24 pt-8 border-t border-zinc-900 flex flex-col sm:flex-row justify-center gap-6 text-center">
             <button onclick="resetViewedList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">
                 すべての動画を「未視聴」に戻す
+            </button>
+            <button onclick="resetPinnedList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">
+                「あとで見るキープ」をすべてクリア
             </button>
             <button onclick="resetClicksList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">
                 AIの学習履歴をリセットする
@@ -235,6 +254,9 @@
                 const idResults = await Promise.all(fetchPromises);
                 idResults.forEach(ids => { allVideoIds = allVideoIds.concat(ids); });
 
+                const pinnedIds = JSON.parse(localStorage.getItem('pinned_video_ids') || '[]');
+                allVideoIds = [...new Set([...allVideoIds, ...pinnedIds])];
+
                 statusEl.innerText = 'フィードを構築中...';
                 allVideosMaster = await fetchVideoDetails(allVideoIds);
                 
@@ -252,7 +274,7 @@
             let details = [];
             for (let i = 0; i < videoIds.length; i += 50) {
                 const chunk = videoIds.slice(i, i + 50);
-                const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${chunk.join(',')}`;
+                const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${chunk.join(',')}`;
                 try {
                     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
                     const data = await res.json();
@@ -265,6 +287,7 @@
                             publishedAt: new Date(item.snippet.publishedAt),
                             liveStatus: item.snippet.liveBroadcastContent, 
                             duration: item.contentDetails?.duration || '',
+                            scheduledStartTime: item.liveStreamingDetails?.scheduledStartTime ? new Date(item.liveStreamingDetails.scheduledStartTime) : null,
                             url: `https://www.youtube.com/watch?v=${item.id}`
                         }));
                         details = details.concat(mapped);
@@ -295,8 +318,15 @@
             const now = new Date();
             const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
             const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+            
+            const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
 
-            const validVideos = videos.filter(v => v.liveStatus === 'live' || (v.liveStatus !== 'upcoming' && v.publishedAt >= threeDaysAgo));
+            const validVideos = videos.filter(v => 
+                v.liveStatus === 'live' || 
+                v.liveStatus === 'upcoming' || 
+                v.publishedAt >= threeDaysAgo ||
+                pinnedIds.has(v.id)
+            );
 
             const unviewed = validVideos.filter(v => !viewedVideoIds.has(v.id));
             const watched = validVideos.filter(v => viewedVideoIds.has(v.id));
@@ -304,17 +334,30 @@
             const clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
             const frequentChannels = Object.keys(clicks).filter(title => clicks[title] >= 2);
 
+            // 1. 配信中ライブ
             const liveList = unviewed.filter(v => v.liveStatus === 'live');
-            const nonLiveUnviewed = unviewed.filter(v => v.liveStatus !== 'live');
+            
+            // 2. 配信予定の待機所
+            const upcomingList = unviewed.filter(v => v.liveStatus === 'upcoming').sort((a, b) => {
+                if (!a.scheduledStartTime) return 1;
+                if (!b.scheduledStartTime) return -1;
+                return a.scheduledStartTime - b.scheduledStartTime;
+            });
 
-            const shortsList = nonLiveUnviewed.filter(v => isShorts(v.duration)).sort((a, b) => {
+            // 3. あとで見るキープリスト
+            const pinnedList = unviewed.filter(v => pinnedIds.has(v.id)).sort((a, b) => b.publishedAt - a.publishedAt);
+
+            // 通常のタイムライン仕分け
+            const normalUnviewed = unviewed.filter(v => v.liveStatus !== 'live' && v.liveStatus !== 'upcoming');
+
+            const shortsList = normalUnviewed.filter(v => isShorts(v.duration)).sort((a, b) => {
                 const aFav = frequentChannels.includes(a.channelTitle) ? 1 : 0;
                 const bFav = frequentChannels.includes(b.channelTitle) ? 1 : 0;
                 if (aFav !== bFav) return bFav - aFav; 
                 return b.publishedAt - a.publishedAt; 
             });
 
-            const normalList = nonLiveUnviewed.filter(v => !isShorts(v.duration));
+            const normalList = normalUnviewed.filter(v => !isShorts(v.duration));
             const frequentList = normalList.filter(v => frequentChannels.includes(v.channelTitle)).sort((a,b)=>b.publishedAt-a.publishedAt);
             const remainingNormal = normalList.filter(v => !frequentChannels.includes(v.channelTitle));
 
@@ -323,6 +366,8 @@
             const watchedList = watched.sort((a,b)=>b.publishedAt-a.publishedAt);
 
             renderSection('live', liveList, true, false);
+            renderSection('upcoming', upcomingList, false, false);
+            renderSection('pinned', pinnedList, false, false);
             renderSection('frequent', frequentList, false, false);
             renderSection('shorts', shortsList, false, false, true);
             renderSection('today', todayList, false, false);
@@ -354,34 +399,66 @@
             const card = document.createElement('div');
             card.id = `video-${video.id}`;
             
-            // 横スクロール用に、通常動画とShortsの横幅を固定 (flex-shrink-0)
+            const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            const isPinned = pinnedIds.has(video.id);
+
             if (isShortsGrid) {
-                card.className = `video-card bg-zinc-900 rounded-xl overflow-hidden flex flex-col flex-shrink-0 w-[140px] md:w-[165px] border border-zinc-900/60 ${isWatched ? 'opacity-25 select-none' : ''}`;
+                card.className = `video-card bg-zinc-900 rounded-xl overflow-hidden flex flex-col flex-shrink-0 w-[140px] md:w-[165px] border border-zinc-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
             } else {
-                card.className = `video-card bg-zinc-900 rounded-xl overflow-hidden flex flex-col flex-shrink-0 w-[240px] md:w-[280px] border border-zinc-900/60 ${isWatched ? 'opacity-25 select-none' : ''}`;
+                card.className = `video-card bg-zinc-900 rounded-xl overflow-hidden flex flex-col flex-shrink-0 w-[240px] md:w-[280px] border border-zinc-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
             }
             
             const aspectClass = isShortsGrid ? 'aspect-[9/16]' : 'aspect-video';
-            const timeStr = isLive && !isWatched ? '🔴 LIVE' : formatTimeAgo(video.publishedAt);
-            const badgeColor = isLive ? 'bg-red-600 text-white' : (isShortsGrid ? 'bg-zinc-800 text-red-400 border border-zinc-700/50' : 'bg-zinc-800/80 text-zinc-400');
-            const badgeText = isLive ? 'LIVE' : (isShortsGrid ? 'Shorts' : '動画');
+            
+            let timeStr = formatTimeAgo(video.publishedAt);
+            if (video.liveStatus === 'upcoming') {
+                timeStr = `⏰ ${formatStartTime(video.scheduledStartTime)}`;
+            } else if (isLive && !isWatched) {
+                timeStr = '🔴 LIVE配信中';
+            }
+
+            const badgeColor = isLive ? 'bg-red-600 text-white' : (video.liveStatus === 'upcoming' ? 'bg-amber-600 text-white' : (isShortsGrid ? 'bg-zinc-800 text-red-400 border border-zinc-700/50' : 'bg-zinc-800/80 text-zinc-400'));
+            const badgeText = isLive ? 'LIVE' : (video.liveStatus === 'upcoming' ? '配信予定' : (isShortsGrid ? 'Shorts' : '動画'));
+            const pinBtnClass = isPinned ? 'bg-teal-500 text-zinc-950 font-bold scale-110' : 'bg-black/60 text-zinc-400 hover:text-white hover:bg-black/80';
 
             card.innerHTML = `
-                <a href="${video.url}" target="_blank" onclick="watchVideo('${video.id}')" class="block ${aspectClass} overflow-hidden bg-black group relative">
-                    <img src="${video.thumbnail}" alt="${video.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                    <span class="absolute bottom-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">
-                        ${badgeText}
-                    </span>
-                </a>
+                <div class="block ${aspectClass} overflow-hidden bg-black group relative">
+                    ${!isWatched ? `
+                        <button onclick="togglePin(event, '${video.id}')" class="absolute top-2 left-2 z-20 p-1.5 rounded-lg text-[10px] transition backdrop-blur-sm ${pinBtnClass}" title="あとで見るキープ">
+                            📌
+                        </button>
+                    ` : ''}
+                    
+                    <a href="${video.url}" target="_blank" onclick="watchVideo('${video.id}')" class="block w-full h-full">
+                        <img src="${video.thumbnail}" alt="${video.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        <span class="absolute bottom-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">
+                            ${badgeText}
+                        </span>
+                    </a>
+                </div>
                 <div class="p-2.5 flex flex-col flex-grow">
                     <h3 class="font-bold text-[11px] line-clamp-2 text-zinc-200 mb-1 leading-snug tracking-wide h-8">${video.title}</h3>
                     <div class="mt-auto text-[10px] text-zinc-500 space-y-0.5">
                         <p class="font-medium text-zinc-400 truncate">${video.channelTitle}</p>
-                        <p class="${isLive && !isWatched ? 'text-red-400 font-semibold' : ''}">${timeStr}</p>
+                        <p class="${(isLive || video.liveStatus === 'upcoming') && !isWatched ? 'text-amber-400 font-semibold' : ''}">${timeStr}</p>
                     </div>
                 </div>
             `;
             return card;
+        }
+
+        function togglePin(event, videoId) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            if (pinnedIds.has(videoId)) {
+                pinnedIds.delete(videoId);
+            } else {
+                pinnedIds.add(videoId);
+            }
+            localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
+            processAndRender(allVideosMaster);
         }
 
         function watchVideo(videoId) {
@@ -390,6 +467,17 @@
                 let clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
                 clicks[video.channelTitle] = (clicks[video.channelTitle] || 0) + 1;
                 localStorage.setItem('channel_clicks', JSON.stringify(clicks));
+            }
+
+            // 【注目】ライブ配信の場合はお気に入り判定用のクリック数だけ増やし、視聴済み処理をすべてスキップして終了
+            if (video && video.liveStatus === 'live') {
+                return;
+            }
+
+            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            if (pinnedIds.has(videoId)) {
+                pinnedIds.delete(videoId);
+                localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
             }
 
             if (viewedVideoIds.has(videoId)) return;
@@ -418,7 +506,7 @@
         }
 
         function clearAllGrids() {
-            ['live', 'frequent', 'shorts', 'today', 'recent', 'watched'].forEach(p => {
+            ['live', 'upcoming', 'pinned', 'frequent', 'shorts', 'today', 'recent', 'watched'].forEach(p => {
                 const scrollArea = document.getElementById(`${p}-scroll`);
                 if(scrollArea) scrollArea.innerHTML = '';
                 const sec = document.getElementById(`${p}-section`);
@@ -430,6 +518,13 @@
             if (confirm('すべての動画を未視聴の状態に戻しますか？')) {
                 localStorage.removeItem('viewed_video_ids');
                 viewedVideoIds.clear();
+                processAndRender(allVideosMaster);
+            }
+        }
+
+        function resetPinnedList() {
+            if (confirm('「あとで見るキープ」のピン留めをすべて一括解除しますか？')) {
+                localStorage.removeItem('pinned_video_ids');
                 processAndRender(allVideosMaster);
             }
         }
@@ -449,6 +544,26 @@
             if (diffMins < 60) return `${diffMins}分前`;
             if (diffHours < 24) return `${diffHours}時間前`;
             return `${diffDays}日前`;
+        }
+
+        function formatStartTime(date) {
+            if (!date) return '開始時間未定';
+            const now = new Date();
+            const diffMs = date - now;
+            
+            if (diffMs < 0) return 'まもなく開始 / 遅延中';
+            
+            const diffMins = Math.floor(diffMs / 60000);
+            if (diffMins < 60) return `あと ${diffMins} 分で開始`;
+            
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `あと ${diffHours} 時間で開始`;
+            
+            const m = date.getMonth() + 1;
+            const d = date.getDate();
+            const h = String(date.getHours()).padStart(2, '0');
+            const i = String(date.getMinutes()).padStart(2, '0');
+            return `${m}/${d} ${h}:${i} 〜`;
         }
     </script>
 </body>
