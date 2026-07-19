@@ -702,7 +702,7 @@
                     if (cachedIds) return cachedIds;
 
                     const uploadPlaylistId = 'UU' + channelId.substring(2);
-                    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=3`;
+                    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=12`;
                     try {
                         const res = await fetch(playlistUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
                         if (res.status === 401) { handleExpiredToken(); return []; }
@@ -973,14 +973,14 @@
             if (list.length === 0) { section.classList.add('hidden'); return; }
             section.classList.remove('hidden');
 
-            const HOUR_PX = 34;        // 1時間あたりの横幅（狭めてほぼスクロール不要に）
+            const HOUR_PX = 58;        // 1時間あたりの横幅（メイン領域拡大に合わせて広げた）
             const TOTAL_HOURS = 24;    // 常に24時間分固定
-            const CARD_W = 84;         // サムネカードの横幅
+            const CARD_W = 104;        // サムネカードの横幅
             const BOX_H = 74;          // サムネ＋チャンネル名の高さ目安（通常時）
             const CONNECTOR_MIN = 20;  // 軸から一番近いレーンまでの最小距離
             const LANE_GAP = 90;       // レーン間の縦間隔
             const TOP_MARGIN = 10;
-            const HOVER_PAD = 190;     // ホバー時のプレビューカードが見切れないための余白
+            const HOVER_PAD = 64;      // ホバー時のプレビューが見切れないための最小余白
             const PREVIEW_W = 200;     // ホバー時のプレビューカード幅
 
             const nowTime = new Date();
@@ -1052,10 +1052,6 @@
                     ? `${String(v.scheduledStartTime.getHours()).padStart(2, '0')}:${String(v.scheduledStartTime.getMinutes()).padStart(2, '0')}`
                     : '未定';
                 const safeTitle = v.title.replace(/"/g, '&quot;');
-                // 上配置は上にポップアップ、下配置は下にポップアップ（軸と衝突しないように）
-                const previewClass = dir === 'up'
-                    ? 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2'
-                    : 'absolute top-full left-1/2 -translate-x-1/2 mt-2';
 
                 boxesHtml += `
                     <div class="absolute" style="left:${x}px; top:${boxTop}px; width:${CARD_W}px; height:${BOX_H}px;">
@@ -1066,8 +1062,8 @@
                             </div>
                             <p class="text-[9px] text-zinc-400 truncate mt-1 group-hover:text-amber-400 transition">${v.channelTitle}</p>
 
-                            <!-- ホバー時にポップアップする拡大プレビュー -->
-                            <div class="hidden group-hover:block ${previewClass} z-50" style="width:${PREVIEW_W}px;">
+                            <!-- ホバー時に、元のサムネ位置に覆いかぶさる形で拡大プレビュー -->
+                            <div class="hidden group-hover:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50" style="width:${PREVIEW_W}px;">
                                 <div class="bg-zinc-900 border border-amber-500 rounded-xl overflow-hidden shadow-2xl">
                                     <div class="relative w-full aspect-video bg-black">
                                         <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
