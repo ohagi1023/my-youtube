@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My YouTube Feed - v6 自動学習版</title>
+    <title>My YouTube Feed - v6.1 修正版</title>
     <!-- Google Identity Services SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,7 +18,7 @@
         <!-- ヘッダー -->
         <header class="flex justify-between items-center border-b border-zinc-800 pb-4 mb-6">
             <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
-                <span class="text-red-500">📺</span> カスタムフィード <span class="text-xs bg-zinc-800 px-2 py-1 rounded text-violet-400 font-normal">v6 自動学習版</span>
+                <span class="text-red-500">📺</span> カスタムフィード <span class="text-xs bg-zinc-800 px-2 py-1 rounded text-violet-400 font-normal">v6.1 修正版</span>
             </h1>
             <div class="flex gap-2">
                 <button id="login-btn" onclick="handleAuthClick()" class="bg-red-600 hover:bg-red-700 text-sm px-4 py-2 rounded-full font-bold transition">
@@ -246,7 +246,6 @@
             return details;
         }
 
-        // ISO 8601形式の時間を総秒数に変換する計算機
         function parseDurationToSeconds(duration) {
             if (!duration) return 0;
             const matches = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -257,7 +256,6 @@
             return (hours * 3600) + (minutes * 60) + seconds;
         }
 
-        // 新・Shorts判定（3分＝180秒以内ならShortsとみなす）
         function isShorts(duration) {
             const totalSeconds = parseDurationToSeconds(duration);
             return totalSeconds > 0 && totalSeconds <= 180;
@@ -275,16 +273,12 @@
             const unviewed = validVideos.filter(v => !viewedVideoIds.has(v.id));
             const watched = validVideos.filter(v => viewedVideoIds.has(v.id));
 
-            // 自動学習：クリック履歴から「2回以上クリックされたチャンネル」をよく見るチャンネルと選考
             const clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
             const frequentChannels = Object.keys(clicks).filter(title => clicks[title] >= 2);
 
-            // 1. ライブ配信
             const liveList = unviewed.filter(v => v.liveStatus === 'live');
             const nonLiveUnviewed = unviewed.filter(v => v.liveStatus !== 'live');
 
-            // 2. Shorts（3分以内）
-            // よく見るチャンネルのShortsが左上に最優先で並ぶようにカスタムソート
             const shortsList = nonLiveUnviewed.filter(v => isShorts(v.duration)).sort((a, b) => {
                 const aFav = frequentChannels.includes(a.channelTitle) ? 1 : 0;
                 const bFav = frequentChannels.includes(b.channelTitle) ? 1 : 0;
@@ -292,23 +286,14 @@
                 return b.publishedAt - a.publishedAt; 
             });
 
-            // 通常の動画（3分を超えるもの）
             const normalList = nonLiveUnviewed.filter(v => !isShorts(v.duration));
-
-            // 3. 【新設】よく見るチャンネルの通常動画
             const frequentList = normalList.filter(v => frequentChannels.includes(v.channelTitle)).sort((a,b)=>b.publishedAt-a.publishedAt);
-            
-            // それ以外のチャンネルの通常動画
             const remainingNormal = normalList.filter(v => !frequentChannels.includes(v.channelTitle));
 
-            // 4. 本日の動画 / 最近の動画
             const todayList = remainingNormal.filter(v => v.publishedAt >= oneDayAgo).sort((a,b)=>b.publishedAt-a.publishedAt);
-            const recentList = remainingNormal.filter(v => v.publishedAt < oneDayAgo).sort((a,b)=>b.publishedAt-a.publishedAt);
-            
-            // 5. 視聴済み
+            const recentList = remainingNormal.filter(v => v.publishedAt < oneDayAgo).sort((a,b)=>b.publishedAt-a.whitesmoke);
             const watchedList = watched.sort((a,b)=>b.publishedAt-a.publishedAt);
 
-            // 描画
             renderSection('live', liveList, true, false);
             renderSection('frequent', frequentList, false, false);
             renderSection('shorts', shortsList, false, false, true);
@@ -367,7 +352,6 @@
         }
 
         function watchVideo(videoId) {
-            // クリックされたら、その動画のチャンネルのクリックカウントを増やす（自動学習用）
             const video = allVideosMaster.find(v => v.id === videoId);
             if (video && video.channelTitle) {
                 let clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
@@ -408,8 +392,6 @@
                 if(sec) sec.classList.add('hidden');
             });
         }
-
-        function refreshFeed() { if (accessToken) refreshFeed(); }
 
         function resetViewedList() {
             if (confirm('すべての動画を未視聴の状態（上段）に戻しますか？')) {
