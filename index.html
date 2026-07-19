@@ -50,6 +50,13 @@
             transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease, opacity 0.2s ease, transform 0.3s ease;
         }
         @media (min-width: 768px) {
+            #sidebar-aside {
+                position: sticky;
+                top: 56px;
+                align-self: flex-start;
+                max-height: calc(100vh - 56px);
+                overflow-y: auto;
+            }
             body.sidebar-closed #sidebar-aside {
                 width: 0;
                 min-width: 0;
@@ -238,7 +245,7 @@
 
 
         <!-- ─── 📺 右側：メインコンテンツ ─── -->
-        <main class="flex-grow min-w-0 p-4 md:p-8 max-w-7xl">
+        <main class="flex-grow min-w-0 p-4 md:p-8 max-w-[1800px]">
             <div id="welcome-content" class="text-center my-24 p-8 bg-zinc-900/50 backdrop-blur rounded-2xl border border-zinc-800 max-w-md mx-auto shadow-xl">
                 <h2 class="text-lg font-bold mb-3">あなた専用のYouTube特化フィード</h2>
                 <p class="text-zinc-400 text-xs mb-6 leading-relaxed">
@@ -433,7 +440,7 @@
             };
         }
         function getCachedVideoDetail(id) {
-            const all = safeGetJSON('cache_video_details', {});
+            const all = safeGetJSON('cache_video_details_v2', {});
             const entry = all[id];
             if (!entry) return null;
             const isLiveLike = entry.data.liveStatus === 'live' || entry.data.liveStatus === 'upcoming';
@@ -442,14 +449,14 @@
             return null;
         }
         function setCachedVideoDetails(videos) {
-            const all = safeGetJSON('cache_video_details', {});
+            const all = safeGetJSON('cache_video_details_v2', {});
             videos.forEach(v => { all[v.id] = { ts: Date.now(), data: serializeVideo(v) }; });
-            safeSetJSON('cache_video_details', all);
+            safeSetJSON('cache_video_details_v2', all);
         }
 
         function resetCacheAndRefresh() {
             if (confirm('APIキャッシュをすべて削除して、最新の状態を強制的に取得し直しますか？')) {
-                ['cache_subscriptions', 'cache_playlist_ids', 'cache_video_details'].forEach(k => localStorage.removeItem(k));
+                ['cache_subscriptions', 'cache_playlist_ids', 'cache_video_details', 'cache_video_details_v2'].forEach(k => localStorage.removeItem(k));
                 refreshFeed();
             }
         }
@@ -973,7 +980,8 @@
             const CONNECTOR_MIN = 20;  // 軸から一番近いレーンまでの最小距離
             const LANE_GAP = 90;       // レーン間の縦間隔
             const TOP_MARGIN = 10;
-            const HOVER_PAD = 54;      // ホバー拡大時に上が見切れないための余白
+            const HOVER_PAD = 190;     // ホバー時のプレビューカードが見切れないための余白
+            const PREVIEW_W = 200;     // ホバー時のプレビューカード幅
 
             const nowTime = new Date();
             const endTime = new Date(nowTime.getTime() + TOTAL_HOURS * 3600000);
@@ -984,21 +992,26 @@
             const targets = list.filter(v => !v.scheduledStartTime || v.scheduledStartTime <= endTime);
             if (targets.length === 0) { section.classList.add('hidden'); return; }
 
-            // ─── レーン割り当て（横位置が重なるものは上に積む）───
+            // ─── レーン割り当て（横位置が重なるものは上下交互に振り分け）───
             const sorted = [...targets].sort((a, b) => (a.scheduledStartTime || nowTime) - (b.scheduledStartTime || nowTime));
-            const laneEndX = [];
-            let maxLane = 0;
+            const laneEndX = {};
+            let maxUpLane = 0;
+            let maxDownLane = 0;
             const placed = sorted.map(v => {
                 const x = timeToX(v.scheduledStartTime || nowTime);
-                let lane = 0;
-                while (laneEndX[lane] !== undefined && x < laneEndX[lane]) lane++;
-                laneEndX[lane] = x + CARD_W + 10;
-                maxLane = Math.max(maxLane, lane);
-                return { v, x, lane };
+                let dir = null, lane = 0;
+                for (let i = 0; i < 20; i++) {
+                    const upKey = `up${i}`, downKey = `down${i}`;
+                    if (laneEndX[upKey] === undefined || x >= laneEndX[upKey]) { dir = 'up'; lane = i; laneEndX[upKey] = x + CARD_W + 10; break; }
+                    if (laneEndX[downKey] === undefined || x >= laneEndX[downKey]) { dir = 'down'; lane = i; laneEndX[downKey] = x + CARD_W + 10; break; }
+                }
+                if (dir === 'up') maxUpLane = Math.max(maxUpLane, lane);
+                else maxDownLane = Math.max(maxDownLane, lane);
+                return { v, x, dir, lane };
             });
 
-            const axisY = HOVER_PAD + TOP_MARGIN + BOX_H + CONNECTOR_MIN + maxLane * LANE_GAP;
-            const totalHeight = axisY + 20;
+            const axisY = HOVER_PAD + TOP_MARGIN + BOX_H + CONNECTOR_MIN + maxUpLane * LANE_GAP;
+            const totalHeight = axisY + CONNECTOR_MIN + BOX_H + maxDownLane * LANE_GAP + HOVER_PAD;
 
             // ─── 6時間ごとの目盛り生成 ───
             let ticks = [];
@@ -1027,32 +1040,48 @@
             });
             axisHtml += `<div class="absolute bg-zinc-700" style="left:0px; top:${axisY}px; width:${timelineWidth}px; height:1px;"></div>`;
 
-            // ─── 各配信予定のカード＋接続線（ホバーで拡大＋タイトル表示）───
+            // ─── 各配信予定のカード＋接続線（ホバーでポップアッププレビュー）───
             let boxesHtml = '';
-            placed.forEach(({ v, x, lane }) => {
-                const boxTop = axisY - CONNECTOR_MIN - BOX_H - lane * LANE_GAP;
-                const connectorHeight = axisY - (boxTop + BOX_H);
+            placed.forEach(({ v, x, dir, lane }) => {
+                const boxTop = dir === 'up'
+                    ? axisY - CONNECTOR_MIN - BOX_H - lane * LANE_GAP
+                    : axisY + CONNECTOR_MIN + lane * LANE_GAP;
+                const connectorTop = dir === 'up' ? boxTop + BOX_H : axisY;
+                const connectorHeight = dir === 'up' ? (axisY - (boxTop + BOX_H)) : (boxTop - axisY);
                 const timeLabel = v.scheduledStartTime
                     ? `${String(v.scheduledStartTime.getHours()).padStart(2, '0')}:${String(v.scheduledStartTime.getMinutes()).padStart(2, '0')}`
                     : '未定';
                 const safeTitle = v.title.replace(/"/g, '&quot;');
+                // 上配置は上にポップアップ、下配置は下にポップアップ（軸と衝突しないように）
+                const previewClass = dir === 'up'
+                    ? 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2'
+                    : 'absolute top-full left-1/2 -translate-x-1/2 mt-2';
 
                 boxesHtml += `
                     <div class="absolute" style="left:${x}px; top:${boxTop}px; width:${CARD_W}px; height:${BOX_H}px;">
-                        <a href="${v.url}" target="_blank" onclick="watchVideo('${v.id}')" class="group block absolute bottom-0 left-0" style="width:${CARD_W}px;">
-                            <div class="origin-bottom transition-transform duration-150 ease-out group-hover:scale-[1.65] group-hover:z-50 relative" style="width:${CARD_W}px;">
-                                <div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black border border-amber-900/50 group-hover:border-amber-400 group-hover:shadow-2xl transition">
-                                    <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
-                                    <span class="absolute top-1 left-1 text-[8px] font-bold bg-amber-600 text-white px-1 py-0.5 rounded">${timeLabel}〜</span>
-                                </div>
-                                <div class="bg-zinc-900/95 group-hover:bg-zinc-950 rounded-b-lg px-1 pt-1 pb-1 group-hover:shadow-2xl transition">
-                                    <p class="hidden group-hover:block text-[9px] font-bold text-zinc-100 leading-snug line-clamp-2 mb-0.5">${v.title}</p>
-                                    <p class="text-[9px] text-zinc-400 truncate group-hover:text-amber-400 transition">${v.channelTitle}</p>
+                        <a href="${v.url}" target="_blank" onclick="watchVideo('${v.id}')" class="group relative block" style="width:${CARD_W}px;">
+                            <div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black border border-amber-900/50 group-hover:border-amber-400 transition">
+                                <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
+                                <span class="absolute top-1 left-1 text-[8px] font-bold bg-amber-600 text-white px-1 py-0.5 rounded">${timeLabel}〜</span>
+                            </div>
+                            <p class="text-[9px] text-zinc-400 truncate mt-1 group-hover:text-amber-400 transition">${v.channelTitle}</p>
+
+                            <!-- ホバー時にポップアップする拡大プレビュー -->
+                            <div class="hidden group-hover:block ${previewClass} z-50" style="width:${PREVIEW_W}px;">
+                                <div class="bg-zinc-900 border border-amber-500 rounded-xl overflow-hidden shadow-2xl">
+                                    <div class="relative w-full aspect-video bg-black">
+                                        <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
+                                        <span class="absolute top-1.5 left-1.5 text-[10px] font-bold bg-amber-600 text-white px-1.5 py-0.5 rounded">${timeLabel}〜</span>
+                                    </div>
+                                    <div class="p-2">
+                                        <h3 class="font-bold text-[11px] line-clamp-2 text-zinc-100 mb-1 leading-snug">${v.title}</h3>
+                                        <p class="text-[10px] text-zinc-400 truncate">${v.channelTitle}</p>
+                                    </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                    <div class="absolute bg-amber-700/60" style="left:${x + CARD_W / 2}px; top:${boxTop + BOX_H}px; width:1px; height:${Math.max(connectorHeight, 0)}px;"></div>
+                    <div class="absolute bg-amber-700/60" style="left:${x + CARD_W / 2}px; top:${connectorTop}px; width:1px; height:${Math.max(connectorHeight, 0)}px;"></div>
                 `;
             });
 
