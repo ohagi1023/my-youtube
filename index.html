@@ -7,23 +7,36 @@
     <!-- Google Identity Services SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #09090b; color: #f4f4f5; font-family: system-ui, -apple-system, sans-serif; }
-        
+        body {
+            background-color: #0a0a12;
+            color: #e8e8f2;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-image:
+                linear-gradient(rgba(124, 108, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(124, 108, 255, 0.035) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        h1, h2, h3 { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
         .scroll-container::-webkit-scrollbar {
             height: 5px;
             width: 4px;
         }
         .scroll-container::-webkit-scrollbar-track {
-            background: #18181b;
+            background: #14141f;
             border-radius: 10px;
         }
         .scroll-container::-webkit-scrollbar-thumb {
-            background: #3f3f46;
+            background: #3d3d5c;
             border-radius: 10px;
         }
         .scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #71717a;
+            background: #6a6a94;
         }
         
         .video-card { 
@@ -31,8 +44,8 @@
         }
         .video-card:hover { 
             transform: translateY(-4px); 
-            border-color: #3f3f46; 
-            box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.8); 
+            border-color: #524fa0; 
+            box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(124, 108, 255, 0.25); 
         }
 
         input[type="range"]::-webkit-slider-thumb {
@@ -41,7 +54,7 @@
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            background: #2dd4bf;
+            background: #7c6cff;
             cursor: pointer;
         }
 
@@ -104,9 +117,9 @@
     </script>
 
     <!-- ─── 常時表示のトップバー ─── -->
-    <header class="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 bg-zinc-950 border-b border-zinc-900">
+    <header class="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 bg-slate-950 border-b border-slate-900">
         <div class="flex items-center gap-2.5 min-w-0">
-            <button onclick="toggleSidebar()" id="sidebar-toggle-btn" title="メニューの開閉" class="shrink-0 text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 w-8 h-8 rounded-lg flex items-center justify-center transition">
+            <button onclick="toggleSidebar()" id="sidebar-toggle-btn" title="メニューの開閉" class="shrink-0 text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 w-8 h-8 rounded-lg flex items-center justify-center transition">
                 <span class="text-sm leading-none">☰</span>
             </button>
             <h1 class="text-sm font-extrabold tracking-wider flex items-center gap-1.5 truncate">
@@ -114,10 +127,10 @@
             </h1>
         </div>
         <div class="shrink-0 flex items-center gap-2">
-            <button id="login-btn" onclick="handleAuthClick()" class="bg-zinc-100 hover:bg-white text-zinc-900 text-[11px] px-3 py-1.5 rounded-lg font-bold transition shadow-md">
+            <button id="login-btn" onclick="handleAuthClick()" class="bg-slate-100 hover:bg-white text-slate-900 text-[11px] px-3 py-1.5 rounded-lg font-bold transition shadow-md">
                 Google連携
             </button>
-            <button id="logout-btn" onclick="handleSignoutClick()" class="bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-800 text-[11px] px-3 py-1.5 rounded-lg font-medium transition" style="display: none;">
+            <button id="logout-btn" onclick="handleSignoutClick()" class="bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 text-[11px] px-3 py-1.5 rounded-lg font-medium transition" style="display: none;">
                 接続解除
             </button>
         </div>
@@ -130,35 +143,35 @@
     <div class="flex flex-col md:flex-row flex-grow min-h-screen relative">
         
         <!-- ─── 📂 左側：サイドバー ─── -->
-        <aside id="sidebar-aside" class="w-full md:w-64 bg-zinc-950 border-b md:border-b-0 md:border-r border-zinc-900 p-5 flex flex-col shrink-0">
+        <aside id="sidebar-aside" class="w-full md:w-64 bg-slate-950 border-b md:border-b-0 md:border-r border-slate-900 p-5 flex flex-col shrink-0">
             <div id="sidebar-menu" class="hidden flex-grow flex flex-col justify-between overflow-y-auto">
                 <div class="space-y-5">
                     <div class="flex items-center justify-between md:hidden -mt-1 mb-1">
-                        <span class="text-[11px] text-zinc-500 font-bold tracking-wider">メニュー</span>
-                        <button onclick="closeSidebar()" class="text-zinc-500 hover:text-white w-7 h-7 rounded-lg hover:bg-zinc-900 flex items-center justify-center transition" title="閉じる">✕</button>
+                        <span class="text-[11px] text-slate-500 font-bold tracking-wider">メニュー</span>
+                        <button onclick="closeSidebar()" class="text-slate-500 hover:text-white w-7 h-7 rounded-lg hover:bg-slate-900 flex items-center justify-center transition" title="閉じる">✕</button>
                     </div>
                     <div>
-                        <p class="text-[10px] text-zinc-500 font-bold mb-2 tracking-wider uppercase">メイン表示</p>
-                        <button onclick="changeFilter('all')" id="btn-filter-all" class="w-full text-left text-xs px-3 py-2 rounded-lg bg-zinc-900 text-zinc-100 font-semibold transition">
+                        <p class="text-[10px] text-slate-500 font-bold mb-2 tracking-wider uppercase">メイン表示</p>
+                        <button onclick="changeFilter('all')" id="btn-filter-all" class="w-full text-left text-xs px-3 py-2 rounded-lg bg-slate-900 text-slate-100 font-semibold transition">
                             🏠 すべて表示
                         </button>
                     </div>
 
                     <div>
-                        <p class="text-[10px] text-zinc-500 font-bold mb-2 tracking-wider uppercase">🔍 特化フィルター</p>
+                        <p class="text-[10px] text-slate-500 font-bold mb-2 tracking-wider uppercase">🔍 特化フィルター</p>
                         <div class="space-y-1">
 
                             <div>
                                 <div class="flex items-center gap-1">
-                                    <button onclick="changeFilter('endra')" id="btn-filter-endra" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
+                                    <button onclick="changeFilter('endra')" id="btn-filter-endra" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition flex items-center gap-1.5">
                                         🐉 エンドラRTA系
                                     </button>
-                                    <button onclick="toggleFilterChannelInput('endra')" class="shrink-0 text-zinc-600 hover:text-teal-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
+                                    <button onclick="toggleFilterChannelInput('endra')" class="shrink-0 text-slate-600 hover:text-violet-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
                                 </div>
                                 <div id="filter-channel-row-endra" class="hidden pl-2 pr-1 pt-1.5 pb-1">
                                     <div class="flex gap-1 mb-1">
-                                        <input type="text" id="filter-channel-input-endra" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
-                                        <button onclick="addFilterChannel('endra')" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                                        <input type="text" id="filter-channel-input-endra" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-slate-900 border border-slate-800 text-slate-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-violet-700 transition placeholder:text-slate-600">
+                                        <button onclick="addFilterChannel('endra')" class="shrink-0 bg-slate-800 hover:bg-violet-800 text-slate-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
                                     </div>
                                     <div id="filter-channel-chips-endra" class="flex flex-wrap gap-1"></div>
                                 </div>
@@ -166,15 +179,15 @@
 
                             <div>
                                 <div class="flex items-center gap-1">
-                                    <button onclick="changeFilter('vtuber')" id="btn-filter-vtuber" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
+                                    <button onclick="changeFilter('vtuber')" id="btn-filter-vtuber" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition flex items-center gap-1.5">
                                         🛸 VTuber
                                     </button>
-                                    <button onclick="toggleFilterChannelInput('vtuber')" class="shrink-0 text-zinc-600 hover:text-teal-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
+                                    <button onclick="toggleFilterChannelInput('vtuber')" class="shrink-0 text-slate-600 hover:text-violet-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
                                 </div>
                                 <div id="filter-channel-row-vtuber" class="hidden pl-2 pr-1 pt-1.5 pb-1">
                                     <div class="flex gap-1 mb-1">
-                                        <input type="text" id="filter-channel-input-vtuber" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
-                                        <button onclick="addFilterChannel('vtuber')" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                                        <input type="text" id="filter-channel-input-vtuber" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-slate-900 border border-slate-800 text-slate-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-violet-700 transition placeholder:text-slate-600">
+                                        <button onclick="addFilterChannel('vtuber')" class="shrink-0 bg-slate-800 hover:bg-violet-800 text-slate-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
                                     </div>
                                     <div id="filter-channel-chips-vtuber" class="flex flex-wrap gap-1"></div>
                                 </div>
@@ -182,15 +195,15 @@
 
                             <div>
                                 <div class="flex items-center gap-1">
-                                    <button onclick="changeFilter('talk_sing')" id="btn-filter-talk_sing" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
+                                    <button onclick="changeFilter('talk_sing')" id="btn-filter-talk_sing" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition flex items-center gap-1.5">
                                         💬 雑談・歌枠
                                     </button>
-                                    <button onclick="toggleFilterChannelInput('talk_sing')" class="shrink-0 text-zinc-600 hover:text-teal-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
+                                    <button onclick="toggleFilterChannelInput('talk_sing')" class="shrink-0 text-slate-600 hover:text-violet-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
                                 </div>
                                 <div id="filter-channel-row-talk_sing" class="hidden pl-2 pr-1 pt-1.5 pb-1">
                                     <div class="flex gap-1 mb-1">
-                                        <input type="text" id="filter-channel-input-talk_sing" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
-                                        <button onclick="addFilterChannel('talk_sing')" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                                        <input type="text" id="filter-channel-input-talk_sing" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-slate-900 border border-slate-800 text-slate-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-violet-700 transition placeholder:text-slate-600">
+                                        <button onclick="addFilterChannel('talk_sing')" class="shrink-0 bg-slate-800 hover:bg-violet-800 text-slate-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
                                     </div>
                                     <div id="filter-channel-chips-talk_sing" class="flex flex-wrap gap-1"></div>
                                 </div>
@@ -198,22 +211,22 @@
 
                             <div>
                                 <div class="flex items-center gap-1">
-                                    <button onclick="changeFilter('clip')" id="btn-filter-clip" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5">
+                                    <button onclick="changeFilter('clip')" id="btn-filter-clip" class="flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition flex items-center gap-1.5">
                                         ✂️ 切り抜き
                                     </button>
-                                    <button onclick="toggleFilterChannelInput('clip')" class="shrink-0 text-zinc-600 hover:text-teal-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
+                                    <button onclick="toggleFilterChannelInput('clip')" class="shrink-0 text-slate-600 hover:text-violet-400 text-xs px-2 py-1 rounded transition" title="このフィルター専用のチャンネルIDを追加">＋</button>
                                 </div>
                                 <div id="filter-channel-row-clip" class="hidden pl-2 pr-1 pt-1.5 pb-1">
                                     <div class="flex gap-1 mb-1">
-                                        <input type="text" id="filter-channel-input-clip" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-zinc-900 border border-zinc-800 text-zinc-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-teal-700 transition placeholder:text-zinc-600">
-                                        <button onclick="addFilterChannel('clip')" class="shrink-0 bg-zinc-800 hover:bg-teal-800 text-zinc-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                                        <input type="text" id="filter-channel-input-clip" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-slate-900 border border-slate-800 text-slate-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-violet-700 transition placeholder:text-slate-600">
+                                        <button onclick="addFilterChannel('clip')" class="shrink-0 bg-slate-800 hover:bg-violet-800 text-slate-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
                                     </div>
                                     <div id="filter-channel-chips-clip" class="flex flex-wrap gap-1"></div>
                                 </div>
                             </div>
 
                             <div>
-                                <button onclick="changeFilter('archive')" id="btn-filter-archive" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition font-semibold">
+                                <button onclick="changeFilter('archive')" id="btn-filter-archive" class="w-full text-left text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition font-semibold">
                                     🗄️ 配信アーカイブ
                                 </button>
                             </div>
@@ -221,13 +234,13 @@
                         </div>
                     </div>
 
-                    <div class="border-t border-zinc-900 pt-4">
-                        <p class="text-[10px] text-zinc-500 font-bold mb-1 tracking-wider uppercase">⏱️ 時間で絞り込み</p>
-                        <div class="flex justify-between items-center text-[11px] text-teal-400 font-medium mb-1.5">
+                    <div class="border-t border-slate-900 pt-4">
+                        <p class="text-[10px] text-slate-500 font-bold mb-1 tracking-wider uppercase">⏱️ 時間で絞り込み</p>
+                        <div class="flex justify-between items-center text-[11px] text-violet-400 font-medium mb-1.5">
                             <span id="duration-label">すべて表示</span>
                         </div>
-                        <input type="range" id="duration-slider" min="0" max="95" value="0" step="5" oninput="handleSliderChange(this.value)" class="w-full bg-zinc-800 h-1 rounded-lg appearance-none cursor-pointer accent-teal-400">
-                        <div class="flex justify-between text-[8px] text-zinc-600 mt-1">
+                        <input type="range" id="duration-slider" min="0" max="95" value="0" step="5" oninput="handleSliderChange(this.value)" class="w-full bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer accent-violet-400">
+                        <div class="flex justify-between text-[8px] text-slate-600 mt-1">
                             <span>制限なし</span>
                             <span>15分</span>
                             <span>30分</span>
@@ -237,7 +250,7 @@
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-zinc-900 text-[10px] text-zinc-700 font-mono tracking-wider mt-6 shrink-0">
+                <div class="pt-4 border-t border-slate-900 text-[10px] text-slate-700 font-mono tracking-wider mt-6 shrink-0">
                     v8.6
                 </div>
             </div>
@@ -246,9 +259,9 @@
 
         <!-- ─── 📺 右側：メインコンテンツ ─── -->
         <main class="flex-grow min-w-0 p-4 md:p-8 max-w-[1800px]">
-            <div id="welcome-content" class="text-center my-24 p-8 bg-zinc-900/50 backdrop-blur rounded-2xl border border-zinc-800 max-w-md mx-auto shadow-xl">
+            <div id="welcome-content" class="text-center my-24 p-8 bg-slate-900/50 backdrop-blur rounded-lg border border-slate-800 max-w-md mx-auto shadow-xl">
                 <h2 class="text-lg font-bold mb-3">あなた専用のYouTube特化フィード</h2>
-                <p class="text-zinc-400 text-xs mb-6 leading-relaxed">
+                <p class="text-slate-400 text-xs mb-6 leading-relaxed">
                     ログインすると、登録チャンネルから最新動画を自動取得。さらに、あなたがよく見るチャンネルを自動で学習し、最優先で表示します。
                 </p>
                 <button onclick="handleAuthClick()" class="bg-red-600 hover:bg-red-700 text-sm px-6 py-3 rounded-full font-bold transition shadow-lg">
@@ -259,20 +272,20 @@
             <div id="main-content" class="hidden">
                 <div class="flex gap-3 mb-10 max-w-2xl">
                     <div class="relative flex-grow">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-500 text-sm">🔍</span>
-                        <input type="text" id="filter-search" oninput="filterVideos()" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 pl-9 pr-4 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition" placeholder="タイトルやチャンネル名で絞り込み...">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500 text-sm">🔍</span>
+                        <input type="text" id="filter-search" oninput="filterVideos()" class="w-full bg-slate-900 border border-slate-800 text-slate-100 pl-9 pr-4 py-2.5 rounded-md text-xs focus:outline-none focus:border-slate-600 transition" placeholder="タイトルやチャンネル名で絞り込み...">
                     </div>
-                    <button onclick="refreshFeed()" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs px-5 py-2.5 rounded-xl font-medium transition flex items-center justify-center gap-1.5 shrink-0">
+                    <button onclick="refreshFeed()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs px-5 py-2.5 rounded-md font-medium transition flex items-center justify-center gap-1.5 shrink-0">
                         🔄 更新
                     </button>
                 </div>
 
-                <div id="status" class="text-center my-16 text-zinc-500 text-sm font-medium">
+                <div id="status" class="text-center my-16 text-slate-500 text-sm font-medium">
                     動画を読み込んでいます...
                 </div>
 
                 <div id="upcoming-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-amber-500 tracking-wider flex items-center gap-2 mb-4">⏰ 配信予定の待機所</h2>
+                    <h2 class="text-sm font-bold text-sky-500 tracking-wider flex items-center gap-2 mb-4">⏰ 配信予定の待機所</h2>
                     <div id="upcoming-scroll" class="overflow-x-auto pb-4 scroll-container"></div>
                 </div>
 
@@ -284,9 +297,9 @@
                 </div>
 
                 <div id="today-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-zinc-300 tracking-wider flex items-center justify-between gap-2 mb-4">
+                    <h2 class="text-sm font-bold text-slate-300 tracking-wider flex items-center justify-between gap-2 mb-4">
                         <span class="flex items-center gap-2">✨ 本日の新着</span>
-                        <button id="playqueue-today" onclick="playSectionQueue('today')" class="hidden text-[10px] font-medium text-zinc-950 bg-zinc-200 hover:bg-white px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                        <button id="playqueue-today" onclick="playSectionQueue('today')" class="hidden text-[10px] font-medium text-slate-950 bg-slate-200 hover:bg-white px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
                     </h2>
                     <div id="today-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
                 </div>
@@ -299,38 +312,38 @@
                     <div id="shorts-scroll" class="flex overflow-x-auto gap-3 pb-4 scroll-container"></div>
                 </div>
 
-                <div id="pinned-section" class="mb-10 p-4 bg-teal-950/10 border border-teal-900/30 rounded-2xl hidden">
-                    <h2 class="text-sm font-bold text-teal-400 tracking-wider flex items-center justify-between gap-2 mb-4">
+                <div id="pinned-section" class="mb-10 p-4 bg-violet-950/10 border border-violet-900/30 rounded-lg hidden">
+                    <h2 class="text-sm font-bold text-violet-400 tracking-wider flex items-center justify-between gap-2 mb-4">
                         <span class="flex items-center gap-2">📌 あとで見るキープ</span>
-                        <button id="playqueue-pinned" onclick="playSectionQueue('pinned')" class="hidden text-[10px] font-medium text-zinc-950 bg-teal-400 hover:bg-teal-300 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                        <button id="playqueue-pinned" onclick="playSectionQueue('pinned')" class="hidden text-[10px] font-medium text-slate-950 bg-violet-400 hover:bg-violet-300 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
                     </h2>
                     <div id="pinned-scroll" class="flex overflow-x-auto gap-4 pb-2 scroll-container"></div>
                 </div>
 
                 <div id="recent-section" class="mb-10 hidden">
-                    <h2 class="text-sm font-bold text-zinc-500 tracking-wider flex items-center justify-between gap-2 mb-4">
+                    <h2 class="text-sm font-bold text-slate-500 tracking-wider flex items-center justify-between gap-2 mb-4">
                         <span class="flex items-center gap-2">📅 最近の投稿</span>
-                        <button id="playqueue-recent" onclick="playSectionQueue('recent')" class="hidden text-[10px] font-medium text-zinc-200 bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
+                        <button id="playqueue-recent" onclick="playSectionQueue('recent')" class="hidden text-[10px] font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-full transition">▶ まとめて見る</button>
                     </h2>
                     <div id="recent-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
                 </div>
 
-                <div id="watched-section" class="mb-10 border-t border-zinc-900 pt-8 hidden">
-                    <h2 class="text-sm font-bold text-zinc-600 tracking-wider flex items-center gap-2 mb-4">✅ 視聴済みの動画・ライブ</h2>
+                <div id="watched-section" class="mb-10 border-t border-slate-900 pt-8 hidden">
+                    <h2 class="text-sm font-bold text-slate-600 tracking-wider flex items-center gap-2 mb-4">✅ 視聴済みの動画・ライブ</h2>
                     <div id="watched-scroll" class="flex overflow-x-auto gap-4 pb-4 scroll-container"></div>
                 </div>
 
-                <div id="empty-message" class="text-center my-24 text-zinc-600 hidden">
+                <div id="empty-message" class="text-center my-24 text-slate-600 hidden">
                     <p class="text-2xl mb-2">✨</p>
                     <p class="text-xs font-medium">対象の動画や配信はありません</p>
                 </div>
             </div>
 
-            <footer id="admin-footer" class="mt-24 pt-8 border-t border-zinc-900 flex flex-col sm:flex-row justify-center gap-6 text-center hidden">
-                <button onclick="resetViewedList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">すべての動画を「未視聴」に戻す</button>
-                <button onclick="resetPinnedList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">「あとで見るキープ」をすべてクリア</button>
-                <button onclick="resetClicksList()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">AIの学習履歴をリセットする</button>
-                <button onclick="resetCacheAndRefresh()" class="text-[11px] text-zinc-700 hover:text-zinc-500 transition">API取得キャッシュをクリアして強制更新</button>
+            <footer id="admin-footer" class="mt-24 pt-8 border-t border-slate-900 flex flex-col sm:flex-row justify-center gap-6 text-center hidden">
+                <button onclick="resetViewedList()" class="text-[11px] text-slate-700 hover:text-slate-500 transition">すべての動画を「未視聴」に戻す</button>
+                <button onclick="resetPinnedList()" class="text-[11px] text-slate-700 hover:text-slate-500 transition">「あとで見るキープ」をすべてクリア</button>
+                <button onclick="resetClicksList()" class="text-[11px] text-slate-700 hover:text-slate-500 transition">AIの学習履歴をリセットする</button>
+                <button onclick="resetCacheAndRefresh()" class="text-[11px] text-slate-700 hover:text-slate-500 transition">API取得キャッシュをクリアして強制更新</button>
             </footer>
         </main>
     </div>
@@ -527,12 +540,12 @@
             wrap.innerHTML = '';
             custom.forEach(id => {
                 const chip = document.createElement('span');
-                chip.className = 'inline-flex items-center gap-1 bg-zinc-900 border border-zinc-800 text-zinc-400 text-[9px] pl-2 pr-1 py-1 rounded-full';
+                chip.className = 'inline-flex items-center gap-1 bg-slate-900 border border-slate-800 text-slate-400 text-[9px] pl-2 pr-1 py-1 rounded-full';
                 chip.innerHTML = `<span class="font-mono">${id.slice(0, 10)}…</span>`;
                 const btn = document.createElement('button');
                 btn.textContent = '×';
                 btn.title = '削除';
-                btn.className = 'text-zinc-600 hover:text-red-400 px-1 leading-none';
+                btn.className = 'text-slate-600 hover:text-red-400 px-1 leading-none';
                 btn.onclick = () => removeFilterChannel(category, id);
                 chip.appendChild(btn);
                 wrap.appendChild(chip);
@@ -803,22 +816,22 @@
                 const btn = document.getElementById(`btn-filter-${f}`);
                 if (!btn) return;
                 if (f === filterType) {
-                    btn.className = "flex-grow text-left text-xs px-3 py-1.5 rounded-lg bg-zinc-900 text-teal-400 font-bold transition flex items-center gap-1.5";
+                    btn.className = "flex-grow text-left text-xs px-3 py-1.5 rounded-lg bg-slate-900 text-violet-400 font-bold transition flex items-center gap-1.5";
                 } else {
-                    btn.className = "flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition flex items-center gap-1.5";
+                    btn.className = "flex-grow text-left text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition flex items-center gap-1.5";
                 }
             });
             const allBtn = document.getElementById('btn-filter-all');
             if (allBtn) {
                 allBtn.className = filterType === 'all'
-                    ? "w-full text-left text-xs px-3 py-2 rounded-lg bg-zinc-900 text-zinc-100 font-semibold transition"
-                    : "w-full text-left text-xs px-3 py-2 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition font-semibold";
+                    ? "w-full text-left text-xs px-3 py-2 rounded-lg bg-slate-900 text-slate-100 font-semibold transition"
+                    : "w-full text-left text-xs px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition font-semibold";
             }
             const archiveBtn = document.getElementById('btn-filter-archive');
             if (archiveBtn) {
                 archiveBtn.className = filterType === 'archive'
-                    ? "w-full text-left text-xs px-3 py-1.5 rounded-lg bg-zinc-900 text-teal-400 font-bold transition"
-                    : "w-full text-left text-xs px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition font-semibold";
+                    ? "w-full text-left text-xs px-3 py-1.5 rounded-lg bg-slate-900 text-violet-400 font-bold transition"
+                    : "w-full text-left text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition font-semibold";
             }
             processAndRender(allVideosMaster);
             if (isMobileViewport()) closeSidebar();
@@ -903,7 +916,11 @@
             const frequentChannels = Object.keys(clicks).filter(title => clicks[title] >= 2);
 
             const liveList = unviewed.filter(v => v.liveStatus === 'live');
-            const upcomingList = unviewed.filter(v => v.liveStatus === 'upcoming').sort((a, b) => {
+            const STALE_UPCOMING_MS = 3 * 60 * 60 * 1000; // 予定時刻から3時間以上経過したら「終了済み/中止」とみなす
+            const upcomingList = unviewed.filter(v =>
+                v.liveStatus === 'upcoming' &&
+                (!v.scheduledStartTime || (now - v.scheduledStartTime) < STALE_UPCOMING_MS)
+            ).sort((a, b) => {
                 if (!a.scheduledStartTime) return 1;
                 if (!b.scheduledStartTime) return -1;
                 return a.scheduledStartTime - b.scheduledStartTime;
@@ -1022,23 +1039,23 @@
 
             let lastDateStr = `${nowTime.getMonth() + 1}/${nowTime.getDate()}`;
             let axisHtml = `
-                <div class="absolute text-[10px] text-teal-400 font-mono font-bold" style="left:20px; top:${axisY - 16}px;">${lastDateStr} 現在</div>
-                <div class="absolute bg-teal-500" style="left:19px; top:${axisY - 4}px; width:2px; height:8px;"></div>
+                <div class="absolute text-[10px] text-violet-400 font-mono font-bold" style="left:20px; top:${axisY - 16}px;">${lastDateStr} 現在</div>
+                <div class="absolute rounded-full animate-pulse" style="left:16px; top:${axisY - 6}px; width:10px; height:10px; background:#7c6cff; box-shadow:0 0 8px 2px rgba(124,108,255,0.7);"></div>
             `;
             ticks.forEach(tk => {
                 const x = timeToX(tk);
                 const dateStr = `${tk.getMonth() + 1}/${tk.getDate()}`;
                 const timeStr = `${String(tk.getHours()).padStart(2, '0')}:00`;
                 if (dateStr !== lastDateStr) {
-                    axisHtml += `<div class="absolute text-[10px] text-teal-400 font-mono font-bold" style="left:${x}px; top:${axisY - 30}px; transform:translateX(-50%);">${dateStr}</div>`;
+                    axisHtml += `<div class="absolute text-[10px] text-violet-400 font-mono font-bold" style="left:${x}px; top:${axisY - 30}px; transform:translateX(-50%);">${dateStr}</div>`;
                     lastDateStr = dateStr;
                 }
                 axisHtml += `
-                    <div class="absolute text-[9px] text-zinc-500 font-mono" style="left:${x}px; top:${axisY - 16}px; transform:translateX(-50%);">${timeStr}</div>
-                    <div class="absolute bg-zinc-800" style="left:${x}px; top:${axisY - 4}px; width:1px; height:8px;"></div>
+                    <div class="absolute text-[9px] text-slate-500 font-mono" style="left:${x}px; top:${axisY - 16}px; transform:translateX(-50%);">${timeStr}</div>
+                    <div class="absolute bg-slate-800" style="left:${x}px; top:${axisY - 4}px; width:1px; height:8px;"></div>
                 `;
             });
-            axisHtml += `<div class="absolute bg-zinc-700" style="left:0px; top:${axisY}px; width:${timelineWidth}px; height:1px;"></div>`;
+            axisHtml += `<div class="absolute" style="left:0px; top:${axisY}px; width:${timelineWidth}px; height:1px; background:linear-gradient(90deg, rgba(124,108,255,0.5), rgba(56,189,248,0.25));"></div>`;
 
             // ─── 各配信予定のカード＋接続線（ホバーでポップアッププレビュー）───
             let boxesHtml = '';
@@ -1056,28 +1073,28 @@
                 boxesHtml += `
                     <div class="absolute" style="left:${x}px; top:${boxTop}px; width:${CARD_W}px; height:${BOX_H}px;">
                         <a href="${v.url}" target="_blank" onclick="watchVideo('${v.id}')" class="group relative block" style="width:${CARD_W}px;">
-                            <div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black border border-amber-900/50 group-hover:border-amber-400 transition">
+                            <div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black border border-sky-900/50 group-hover:border-sky-400 transition">
                                 <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
-                                <span class="absolute top-1 left-1 text-[8px] font-bold bg-amber-600 text-white px-1 py-0.5 rounded">${timeLabel}〜</span>
+                                <span class="absolute top-1 left-1 text-[8px] font-bold bg-sky-600 text-white px-1 py-0.5 rounded">${timeLabel}〜</span>
                             </div>
-                            <p class="text-[9px] text-zinc-400 truncate mt-1 group-hover:text-amber-400 transition">${v.channelTitle}</p>
+                            <p class="text-[9px] text-slate-400 truncate mt-1 group-hover:text-sky-400 transition">${v.channelTitle}</p>
 
                             <!-- ホバー時に、元のサムネ位置に覆いかぶさる形で拡大プレビュー -->
                             <div class="hidden group-hover:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50" style="width:${PREVIEW_W}px;">
-                                <div class="bg-zinc-900 border border-amber-500 rounded-xl overflow-hidden shadow-2xl">
+                                <div class="bg-slate-900 border border-sky-500 rounded-md overflow-hidden shadow-2xl">
                                     <div class="relative w-full aspect-video bg-black">
                                         <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
-                                        <span class="absolute top-1.5 left-1.5 text-[10px] font-bold bg-amber-600 text-white px-1.5 py-0.5 rounded">${timeLabel}〜</span>
+                                        <span class="absolute top-1.5 left-1.5 text-[10px] font-bold bg-sky-600 text-white px-1.5 py-0.5 rounded">${timeLabel}〜</span>
                                     </div>
                                     <div class="p-2">
-                                        <h3 class="font-bold text-[11px] line-clamp-2 text-zinc-100 mb-1 leading-snug">${v.title}</h3>
-                                        <p class="text-[10px] text-zinc-400 truncate">${v.channelTitle}</p>
+                                        <h3 class="font-bold text-[11px] line-clamp-2 text-slate-100 mb-1 leading-snug">${v.title}</h3>
+                                        <p class="text-[10px] text-slate-400 truncate">${v.channelTitle}</p>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                    <div class="absolute bg-amber-700/60" style="left:${x + CARD_W / 2}px; top:${connectorTop}px; width:1px; height:${Math.max(connectorHeight, 0)}px;"></div>
+                    <div class="absolute bg-sky-700/60" style="left:${x + CARD_W / 2}px; top:${connectorTop}px; width:1px; height:${Math.max(connectorHeight, 0)}px;"></div>
                 `;
             });
 
@@ -1091,9 +1108,9 @@
             const isPinned = pinnedIds.has(video.id);
 
             if (isShortsGrid) {
-                card.className = `video-card bg-zinc-900 rounded-xl overflow-hidden flex flex-col flex-shrink-0 w-[140px] md:w-[165px] border border-zinc-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
+                card.className = `video-card bg-slate-900 rounded-md overflow-hidden flex flex-col flex-shrink-0 w-[140px] md:w-[165px] border border-slate-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
             } else {
-                card.className = `video-card bg-zinc-900 rounded-xl overflow-hidden flex flex-col flex-shrink-0 w-[200px] sm:w-[240px] md:w-[280px] border border-zinc-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
+                card.className = `video-card bg-slate-900 rounded-md overflow-hidden flex flex-col flex-shrink-0 w-[200px] sm:w-[240px] md:w-[280px] border border-slate-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
             }
             
             const aspectClass = isShortsGrid ? 'aspect-[9/16]' : 'aspect-video';
@@ -1104,9 +1121,9 @@
                 timeStr = '🔴 LIVE配信中';
             }
 
-            const badgeColor = isLive ? 'bg-red-600 text-white' : (video.liveStatus === 'upcoming' ? 'bg-amber-600 text-white' : (isShortsGrid ? 'bg-zinc-800 text-red-400 border border-zinc-700/50' : 'bg-zinc-800/80 text-zinc-400'));
+            const badgeColor = isLive ? 'bg-red-600 text-white' : (video.liveStatus === 'upcoming' ? 'bg-sky-600 text-white' : (isShortsGrid ? 'bg-slate-800 text-red-400 border border-slate-700/50' : 'bg-slate-800/80 text-slate-400'));
             const badgeText = isLive ? 'LIVE' : (video.liveStatus === 'upcoming' ? '配信予定' : (isShortsGrid ? 'Shorts' : '動画'));
-            const pinBtnClass = isPinned ? 'bg-teal-500 text-zinc-950 font-bold scale-110' : 'bg-black/60 text-zinc-400 hover:text-white hover:bg-black/80';
+            const pinBtnClass = isPinned ? 'bg-violet-500 text-slate-950 font-bold scale-110' : 'bg-black/60 text-slate-400 hover:text-white hover:bg-black/80';
 
             card.innerHTML = `
                 <div class="block ${aspectClass} overflow-hidden bg-black group relative">
@@ -1119,10 +1136,10 @@
                     </a>
                 </div>
                 <div class="p-2.5 flex flex-col flex-grow">
-                    <h3 class="font-bold text-[11px] line-clamp-2 text-zinc-200 mb-1 leading-snug tracking-wide h-8">${video.title}</h3>
-                    <div class="mt-auto text-[10px] text-zinc-500 space-y-0.5">
-                        <p class="font-medium text-zinc-400 truncate">${video.channelTitle}</p>
-                        <p class="${(isLive || video.liveStatus === 'upcoming') && !isWatched ? 'text-amber-400 font-semibold' : ''}">${timeStr}</p>
+                    <h3 class="font-bold text-[11px] line-clamp-2 text-slate-200 mb-1 leading-snug tracking-wide h-8">${video.title}</h3>
+                    <div class="mt-auto text-[10px] text-slate-500 space-y-0.5">
+                        <p class="font-medium text-slate-400 truncate">${video.channelTitle}</p>
+                        <p class="${(isLive || video.liveStatus === 'upcoming') && !isWatched ? 'text-sky-400 font-semibold' : ''}">${timeStr}</p>
                     </div>
                 </div>
             `;
