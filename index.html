@@ -747,12 +747,18 @@
                 // ─── 登録チャンネル一覧: キャッシュがあれば使い回してAPIコールを節約 ───
                 let subItems = getCachedSubscriptions();
                 if (!subItems) {
-                    const subUrl = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50`;
-                    const subRes = await fetch(subUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                    if (subRes.status === 401) { handleExpiredToken(); return; }
-                    const subData = await subRes.json();
-                    if (!subData.items) { statusEl.innerText = 'チャンネルが見つかりません。'; return; }
-                    subItems = subData.items;
+                    subItems = [];
+                    let pageToken = '';
+                    do {
+                        const subUrl = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50${pageToken ? `&pageToken=${pageToken}` : ''}`;
+                        const subRes = await fetch(subUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                        if (subRes.status === 401) { handleExpiredToken(); return; }
+                        const subData = await subRes.json();
+                        if (subData.items) subItems = subItems.concat(subData.items);
+                        pageToken = subData.nextPageToken || '';
+                    } while (pageToken);
+
+                    if (subItems.length === 0) { statusEl.innerText = 'チャンネルが見つかりません。'; return; }
                     setCachedSubscriptions(subItems);
                 }
 
