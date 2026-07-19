@@ -1014,7 +1014,7 @@
 
             const url = ids.length === 1
                 ? `https://www.youtube.com/watch?v=${ids[0]}`
-                : `https://www.youtube.com/watch?v=${ids[0]}&playlist=${ids.slice(1).join(',')}`;
+                : `https://www.youtube.com/watch_videos?video_ids=${ids.slice(0, 50).join(',')}`;
             window.open(url, '_blank');
 
             processAndRender(allVideosMaster);
