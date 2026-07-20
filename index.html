@@ -387,7 +387,8 @@
         let mySubscribedChannels = []; 
         let currentSubscribedChannelsList = []; // [{id, title}] サイドバー表示用（上位50件）
         let guaranteedChannelsInfo = [];        // [{id, title}] サイドバー表示用（保証チャンネル）
-        let perChannelFetchCount = {};          // {channelId: 取得できた動画本数} 診断表示用
+        let perChannelFetchCount = {};          // {channelId: 表示対象の動画本数} 診断表示用
+        let liveArchiveVideoIds = new Set();    // 「ライブ」タブ由来の動画ID（本物の配信アーカイブ判定用）
         let categoryExtraVideos = { endra: [], vtuber: [], talk_sing: [], clip: [] }; // 各特化フィルター専用チャンネルの動画
         let renderedSectionVideos = {}; // 各セクションの現在の表示内容（まとめて見る機能で参照）
         let viewedVideoIds = new Set(JSON.parse(localStorage.getItem('viewed_video_ids') || '[]'));
@@ -1010,6 +1011,30 @@
 
                 renderChannelListPanel();
 
+                // ─── 各チャンネルの「ライブ」タブから本物の配信IDを取得（プレミア公開と区別するため） ───
+                // YouTubeの「ライブ」タブは内部的にUULV...というプレイリストで、ここに入っている動画だけが実際のライブ配信。
+                // プレミア公開は「動画」タブ側に入るため、この集合に含まれない＝通常動画として扱われる。
+                statusEl.innerText = '配信情報を解析中...';
+                const liveTabChannelIds = [...subItems.map(item => item.snippet.resourceId.channelId), ...guaranteedChannels];
+                const livePromises = liveTabChannelIds.map(async (chId) => {
+                    const cacheKey = 'uulv:' + chId;
+                    const cached = getCachedPlaylist(cacheKey);
+                    if (cached) return cached;
+                    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=UULV${chId.substring(2)}&maxResults=12`;
+                    try {
+                        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                        if (res.status === 401) { handleExpiredToken(); return []; }
+                        const data = await res.json();
+                        const ids = data.items ? data.items.map(i => i.snippet?.resourceId?.videoId).filter(Boolean) : [];
+                        setCachedPlaylist(cacheKey, ids); // ライブタブが無いチャンネルは空をキャッシュして再問い合わせを防ぐ
+                        return ids;
+                    } catch (e) { setCachedPlaylist(cacheKey, []); return []; }
+                });
+                const liveResults = await Promise.all(livePromises);
+                if (authExpired) return;
+                liveArchiveVideoIds = new Set();
+                liveResults.forEach(ids => ids.forEach(id => liveArchiveVideoIds.add(id)));
+
                 const pinnedIds = JSON.parse(localStorage.getItem('pinned_video_ids') || '[]');
                 allVideoIds = [...new Set([...allVideoIds, ...pinnedIds])];
 
@@ -1019,6 +1044,17 @@
                 
                 statusEl.style.display = 'none';
                 processAndRender(allVideosMaster);
+
+                // ─── 診断表示: 各チャンネルの「表示対象（3日以内 or ライブ/予定）」本数を計算してパネル更新 ───
+                const diagThreeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+                const countByTitle = {};
+                allVideosMaster.forEach(v => {
+                    const eligible = v.liveStatus === 'live' || v.liveStatus === 'upcoming' || v.publishedAt >= diagThreeDaysAgo;
+                    if (eligible) countByTitle[v.channelTitle] = (countByTitle[v.channelTitle] || 0) + 1;
+                });
+                currentSubscribedChannelsList.forEach(c => { perChannelFetchCount[c.id] = countByTitle[c.title] || 0; });
+                guaranteedChannelsInfo.forEach(c => { perChannelFetchCount[c.id] = countByTitle[c.title] || 0; });
+                renderChannelListPanel();
 
                 // ─── メイン描画が終わってから、各特化フィルター専用チャンネルの動画を取得 ───
                 await fetchAllCategoryExtraVideos();
@@ -1207,7 +1243,7 @@
 
             if (currentFilter === 'archive') {
                 // 配信アーカイブ: 終了済みのライブ配信のうち、公開から24時間以内のもの
-                filtered = filtered.filter(v => v.wasLiveStream && v.liveStatus === 'none' && v.publishedAt >= threeDaysAgo);
+                filtered = filtered.filter(v => liveArchiveVideoIds.has(v.id) && v.liveStatus === 'none' && v.publishedAt >= threeDaysAgo);
             } else if (currentFilter !== 'all') {
                 const keywords = FILTER_KEYWORDS[currentFilter];
                 filtered = filtered.filter(v => {
@@ -1250,7 +1286,7 @@
             });
 
             const pinnedList = unviewed.filter(v => pinnedIds.has(v.id)).sort((a, b) => b.publishedAt - a.publishedAt);
-            const normalUnviewed = unviewed.filter(v => v.liveStatus !== 'live' && v.liveStatus !== 'upcoming' && (currentFilter === 'archive' || !(v.wasLiveStream && !pinnedIds.has(v.id))));
+            const normalUnviewed = unviewed.filter(v => v.liveStatus !== 'live' && v.liveStatus !== 'upcoming' && (currentFilter === 'archive' || !(liveArchiveVideoIds.has(v.id) && !pinnedIds.has(v.id))));
 
             const shortsList = selectWithChannelDiversity(normalUnviewed.filter(v => isShorts(v.duration)), Infinity, clickCountFor);
 
