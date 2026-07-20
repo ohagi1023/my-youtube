@@ -387,6 +387,7 @@
         let mySubscribedChannels = []; 
         let currentSubscribedChannelsList = []; // [{id, title}] サイドバー表示用（上位50件）
         let guaranteedChannelsInfo = [];        // [{id, title}] サイドバー表示用（保証チャンネル）
+        let perChannelFetchCount = {};          // {channelId: 取得できた動画本数} 診断表示用
         let categoryExtraVideos = { endra: [], vtuber: [], talk_sing: [], clip: [] }; // 各特化フィルター専用チャンネルの動画
         let renderedSectionVideos = {}; // 各セクションの現在の表示内容（まとめて見る機能で参照）
         let viewedVideoIds = new Set(JSON.parse(localStorage.getItem('viewed_video_ids') || '[]'));
@@ -872,12 +873,18 @@
             const excludedLinkWrap = document.getElementById('channel-list-excluded-reset-wrap');
             if (!normalWrap || !guarWrap || !countEl) return;
 
-            normalWrap.innerHTML = currentSubscribedChannelsList.map(c => `
+            normalWrap.innerHTML = currentSubscribedChannelsList.map(c => {
+                const cnt = perChannelFetchCount[c.id];
+                const cntLabel = (cnt === undefined) ? '' : `<span class="shrink-0 font-mono text-[9px] ${cnt === 0 ? 'text-red-400 font-bold' : 'text-slate-600'}">${cnt}本</span>`;
+                return `
                 <div class="flex items-center justify-between gap-1 group">
                     <span class="truncate">${c.title}</span>
-                    <button onclick="excludeChannel('${c.id}')" class="shrink-0 text-slate-700 hover:text-red-400 px-1 leading-none transition" title="このチャンネルを今後取得しない">−</button>
+                    <span class="flex items-center gap-1 shrink-0">
+                        ${cntLabel}
+                        <button onclick="excludeChannel('${c.id}')" class="text-slate-700 hover:text-red-400 px-1 leading-none transition" title="このチャンネルを今後取得しない">−</button>
+                    </span>
                 </div>
-            `).join('') || '<div class="text-slate-700">なし</div>';
+            `; }).join('') || '<div class="text-slate-700">なし</div>';
 
             if (guaranteedChannelsInfo.length > 0) {
                 guarSection.classList.remove('hidden');
@@ -944,6 +951,7 @@
                 statusEl.innerText = '新着動画を解析中...';
                 
                 let allVideoIds = [];
+                perChannelFetchCount = {};
                 const mainUploadsMap = await resolveUploadsPlaylistIds(subItems.map(item => item.snippet.resourceId.channelId));
                 if (authExpired) return;
                 const fetchPromises = subItems.map(async (item) => {
@@ -951,7 +959,7 @@
 
                     // ─── 各チャンネルの新着動画ID一覧: 短時間キャッシュで連続更新のコストを削減 ───
                     const cachedIds = getCachedPlaylist(channelId);
-                    if (cachedIds) return cachedIds;
+                    if (cachedIds) { perChannelFetchCount[channelId] = cachedIds.length; return cachedIds; }
 
                     const uploadPlaylistId = mainUploadsMap[channelId];
                     const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=12`;
@@ -961,8 +969,9 @@
                         const data = await res.json();
                         const ids = data.items ? data.items.map(i => i.snippet.resourceId.videoId) : [];
                         setCachedPlaylist(channelId, ids);
+                        perChannelFetchCount[channelId] = ids.length;
                         return ids;
-                    } catch (e) { return []; }
+                    } catch (e) { perChannelFetchCount[channelId] = 0; return []; }
                 });
 
                 const idResults = await Promise.all(fetchPromises);
@@ -976,7 +985,7 @@
                     if (authExpired) return;
                     const guarPromises = guaranteedChannels.map(async (chId) => {
                         const cachedIds = getCachedPlaylist(chId);
-                        if (cachedIds) return cachedIds;
+                        if (cachedIds) { perChannelFetchCount[chId] = cachedIds.length; return cachedIds; }
                         const uploadPlaylistId = guarUploadsMap[chId];
                         const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=12`;
                         try {
@@ -985,8 +994,9 @@
                             const data = await res.json();
                             const ids = data.items ? data.items.map(i => i.snippet?.resourceId?.videoId).filter(Boolean) : [];
                             setCachedPlaylist(chId, ids);
+                            perChannelFetchCount[chId] = ids.length;
                             return ids;
-                        } catch (e) { return []; }
+                        } catch (e) { perChannelFetchCount[chId] = 0; return []; }
                     });
                     const guarResults = await Promise.all(guarPromises);
                     if (authExpired) return;
@@ -1124,6 +1134,48 @@
             processAndRender(allVideosMaster);
         }
 
+        // ─── クリック数の多いチャンネルを優先しつつ、各チャンネルが最低1本は入るように選抜 ───
+        // 単純な「ソート→上限で切り捨て」だと、クリック履歴のないチャンネルが永久に枠外に押し出されるため、
+        // まず各チャンネルの最新1本を確保してから、残り枠を2本目以降で埋めていく方式にする
+        function selectWithChannelDiversity(list, limit, clickCountFor) {
+            const bySort = (a, b) => {
+                const diff = clickCountFor(b.channelTitle) - clickCountFor(a.channelTitle);
+                if (diff !== 0) return diff;
+                return b.publishedAt - a.publishedAt;
+            };
+            if (list.length <= limit) return [...list].sort(bySort);
+
+            const groups = new Map();
+            list.forEach(v => {
+                if (!groups.has(v.channelTitle)) groups.set(v.channelTitle, []);
+                groups.get(v.channelTitle).push(v);
+            });
+            groups.forEach(arr => arr.sort((a, b) => b.publishedAt - a.publishedAt));
+
+            const channels = [...groups.keys()].sort((a, b) => {
+                const diff = clickCountFor(b) - clickCountFor(a);
+                if (diff !== 0) return diff;
+                return groups.get(b)[0].publishedAt - groups.get(a)[0].publishedAt;
+            });
+
+            const result = [];
+            let round = 0;
+            while (result.length < limit) {
+                let added = false;
+                for (const ch of channels) {
+                    const arr = groups.get(ch);
+                    if (arr.length > round) {
+                        result.push(arr[round]);
+                        added = true;
+                        if (result.length >= limit) break;
+                    }
+                }
+                if (!added) break;
+                round++;
+            }
+            return result;
+        }
+
         function processAndRender(videos) {
             clearAllGrids();
 
@@ -1155,7 +1207,7 @@
 
             if (currentFilter === 'archive') {
                 // 配信アーカイブ: 終了済みのライブ配信のうち、公開から24時間以内のもの
-                filtered = filtered.filter(v => v.wasLiveStream && v.liveStatus === 'none' && v.publishedAt >= oneDayAgo);
+                filtered = filtered.filter(v => v.wasLiveStream && v.liveStatus === 'none' && v.publishedAt >= threeDaysAgo);
             } else if (currentFilter !== 'all') {
                 const keywords = FILTER_KEYWORDS[currentFilter];
                 filtered = filtered.filter(v => {
@@ -1200,18 +1252,12 @@
             const pinnedList = unviewed.filter(v => pinnedIds.has(v.id)).sort((a, b) => b.publishedAt - a.publishedAt);
             const normalUnviewed = unviewed.filter(v => v.liveStatus !== 'live' && v.liveStatus !== 'upcoming' && (currentFilter === 'archive' || !(v.wasLiveStream && !pinnedIds.has(v.id))));
 
-            const favSort = (a, b) => {
-                const diff = clickCountFor(b.channelTitle) - clickCountFor(a.channelTitle);
-                if (diff !== 0) return diff;
-                return b.publishedAt - a.publishedAt;
-            };
-
-            const shortsList = normalUnviewed.filter(v => isShorts(v.duration)).sort(favSort).slice(0, 30);
+            const shortsList = selectWithChannelDiversity(normalUnviewed.filter(v => isShorts(v.duration)), Infinity, clickCountFor);
 
             const normalList = normalUnviewed.filter(v => !isShorts(v.duration));
 
-            const todayList = normalList.filter(v => v.publishedAt >= oneDayAgo).sort(favSort).slice(0, 20);
-            const recentList = normalList.filter(v => v.publishedAt < oneDayAgo).sort(favSort).slice(0, 30);
+            const todayList = selectWithChannelDiversity(normalList.filter(v => v.publishedAt >= oneDayAgo), Infinity, clickCountFor);
+            const recentList = selectWithChannelDiversity(normalList.filter(v => v.publishedAt < oneDayAgo), Infinity, clickCountFor);
             const watchedList = watched.sort((a,b)=>b.publishedAt-a.publishedAt);
 
             renderSection('live', liveList, true, false);
