@@ -152,9 +152,20 @@
                     </div>
                     <div>
                         <p class="text-[10px] text-slate-500 font-bold mb-2 tracking-wider uppercase">メイン表示</p>
-                        <button onclick="changeFilter('all')" id="btn-filter-all" class="w-full text-left text-xs px-3 py-2 rounded-lg bg-slate-900 text-slate-100 font-semibold transition">
-                            🏠 すべて表示
-                        </button>
+                        <div class="flex items-center gap-1">
+                            <button onclick="changeFilter('all')" id="btn-filter-all" class="flex-grow text-left text-xs px-3 py-2 rounded-lg bg-slate-900 text-slate-100 font-semibold transition">
+                                🏠 すべて表示
+                            </button>
+                            <button onclick="toggleFilterChannelInput('guaranteed')" class="shrink-0 text-slate-600 hover:text-violet-400 text-xs px-2 py-1 rounded transition" title="上位50件に関わらず必ず反映するチャンネルIDを追加">＋</button>
+                        </div>
+                        <div id="filter-channel-row-guaranteed" class="hidden pl-2 pr-1 pt-1.5 pb-1">
+                            <p class="text-[9px] text-slate-500 mb-1 leading-snug">関連性の上位50件に関わらず、必ず動画を取得するチャンネル</p>
+                            <div class="flex gap-1 mb-1">
+                                <input type="text" id="filter-channel-input-guaranteed" placeholder="チャンネルID (UC...) を追加" class="flex-grow min-w-0 bg-slate-900 border border-slate-800 text-slate-200 text-[10px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-violet-700 transition placeholder:text-slate-600">
+                                <button onclick="addFilterChannel('guaranteed')" class="shrink-0 bg-slate-800 hover:bg-violet-800 text-slate-300 text-[10px] px-2.5 py-1.5 rounded-lg font-bold transition">追加</button>
+                            </div>
+                            <div id="filter-channel-chips-guaranteed" class="flex flex-wrap gap-1"></div>
+                        </div>
                     </div>
 
                     <div>
@@ -246,6 +257,23 @@
                             <span>30分</span>
                             <span>60分</span>
                             <span>90分+</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-900 pt-4">
+                        <button onclick="toggleChannelListPanel()" class="w-full flex items-center justify-between text-[10px] text-slate-500 hover:text-violet-400 font-bold tracking-wider uppercase transition">
+                            <span>📡 取得中のチャンネル <span id="channel-list-count" class="text-slate-600 normal-case font-normal">(0件)</span></span>
+                            <span id="channel-list-toggle-icon" class="text-slate-600">▾</span>
+                        </button>
+                        <div id="channel-list-panel" class="hidden mt-2 max-h-[200px] overflow-y-auto pr-1 scroll-container space-y-2">
+                            <div>
+                                <p class="text-[9px] text-slate-600 font-bold mb-1">通常（関連性の高い順・上位50）</p>
+                                <div id="channel-list-normal" class="space-y-0.5 text-[10px] text-slate-400"></div>
+                            </div>
+                            <div id="channel-list-guaranteed-wrap" class="hidden">
+                                <p class="text-[9px] text-violet-500 font-bold mb-1">保証チャンネル（上限に関わらず必ず取得）</p>
+                                <div id="channel-list-guaranteed" class="space-y-0.5 text-[10px] text-violet-300"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -356,6 +384,8 @@
         let accessToken = null;
         let allVideosMaster = []; 
         let mySubscribedChannels = []; 
+        let currentSubscribedChannelsList = []; // [{id, title}] サイドバー表示用（上位50件）
+        let guaranteedChannelsInfo = [];        // [{id, title}] サイドバー表示用（保証チャンネル）
         let categoryExtraVideos = { endra: [], vtuber: [], talk_sing: [], clip: [] }; // 各特化フィルター専用チャンネルの動画
         let renderedSectionVideos = {}; // 各セクションの現在の表示内容（まとめて見る機能で参照）
         let viewedVideoIds = new Set(JSON.parse(localStorage.getItem('viewed_video_ids') || '[]'));
@@ -526,7 +556,7 @@
             input.value = '';
             document.getElementById(`filter-channel-row-${category}`).classList.add('hidden');
             renderFilterChannelChips(category);
-            fetchCategoryExtraVideos(category);
+            if (category === 'guaranteed') { refreshFeed(); } else { fetchCategoryExtraVideos(category); }
         }
         function removeFilterChannel(category, channelId) {
             const all = safeGetJSON('custom_filter_channels', {});
@@ -534,7 +564,7 @@
             all[category] = all[category].filter(id => id !== channelId);
             safeSetJSON('custom_filter_channels', all);
             renderFilterChannelChips(category);
-            fetchCategoryExtraVideos(category);
+            if (category === 'guaranteed') { refreshFeed(); } else { fetchCategoryExtraVideos(category); }
         }
         function renderFilterChannelChips(category) {
             const wrap = document.getElementById(`filter-channel-chips-${category}`);
@@ -556,6 +586,7 @@
         }
         function renderAllFilterChannelChips() {
             FILTER_CATEGORIES.forEach(renderFilterChannelChips);
+            renderFilterChannelChips('guaranteed');
         }
 
         // 特定カテゴリ専用チャンネルの最新動画を取得し、そのフィルターが選択中なら再描画
@@ -737,6 +768,71 @@
             }
         }
 
+        // ─── チャンネルIDからチャンネル名を取得（軽量キャッシュ付き） ───
+        async function fetchChannelTitles(channelIds) {
+            const cache = safeGetJSON('cache_channel_titles', {});
+            const result = [];
+            const idsToFetch = [];
+            channelIds.forEach(id => {
+                const entry = cache[id];
+                if (entry && (Date.now() - entry.ts) < CACHE_TTL_SUBS) {
+                    result.push({ id, title: entry.title });
+                } else {
+                    idsToFetch.push(id);
+                }
+            });
+            if (idsToFetch.length > 0) {
+                try {
+                    const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${idsToFetch.join(',')}`;
+                    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                    if (res.status === 401) { handleExpiredToken(); }
+                    else {
+                        const data = await res.json();
+                        (data.items || []).forEach(c => {
+                            const title = c.snippet?.title || c.id;
+                            cache[c.id] = { ts: Date.now(), title };
+                            result.push({ id: c.id, title });
+                        });
+                        safeSetJSON('cache_channel_titles', cache);
+                    }
+                } catch (e) { /* 取得失敗分はIDのまま表示 */ }
+                idsToFetch.forEach(id => {
+                    if (!result.some(r => r.id === id)) result.push({ id, title: id });
+                });
+            }
+            return result;
+        }
+
+        // ─── サイドバーの「取得中のチャンネル」パネル ───
+        function toggleChannelListPanel() {
+            const panel = document.getElementById('channel-list-panel');
+            const icon = document.getElementById('channel-list-toggle-icon');
+            if (!panel) return;
+            const isHidden = panel.classList.contains('hidden');
+            panel.classList.toggle('hidden');
+            if (icon) icon.textContent = isHidden ? '▴' : '▾';
+        }
+        function renderChannelListPanel() {
+            const normalWrap = document.getElementById('channel-list-normal');
+            const guarWrap = document.getElementById('channel-list-guaranteed');
+            const guarSection = document.getElementById('channel-list-guaranteed-wrap');
+            const countEl = document.getElementById('channel-list-count');
+            if (!normalWrap || !guarWrap || !countEl) return;
+
+            normalWrap.innerHTML = currentSubscribedChannelsList
+                .map(c => `<div class="truncate">${c.title}</div>`).join('') || '<div class="text-slate-700">なし</div>';
+
+            if (guaranteedChannelsInfo.length > 0) {
+                guarSection.classList.remove('hidden');
+                guarWrap.innerHTML = guaranteedChannelsInfo.map(c => `<div class="truncate">＋ ${c.title}</div>`).join('');
+            } else {
+                guarSection.classList.add('hidden');
+                guarWrap.innerHTML = '';
+            }
+
+            countEl.textContent = `(${currentSubscribedChannelsList.length + guaranteedChannelsInfo.length}件)`;
+        }
+
         async function refreshFeed() {
             const statusEl = document.getElementById('status');
             statusEl.style.display = 'block';
@@ -765,6 +861,10 @@
                 }
 
                 mySubscribedChannels = subItems.map(item => item.snippet?.title ? item.snippet.title.toLowerCase() : '');
+                currentSubscribedChannelsList = subItems.map(item => ({
+                    id: item.snippet.resourceId.channelId,
+                    title: item.snippet?.title || item.snippet.resourceId.channelId
+                }));
 
                 statusEl.innerText = '新着動画を解析中...';
                 
@@ -791,6 +891,35 @@
                 const idResults = await Promise.all(fetchPromises);
                 if (authExpired) return;
                 idResults.forEach(ids => { allVideoIds = allVideoIds.concat(ids); });
+
+                // ─── 上位50件に関わらず必ず取得する「保証チャンネル」も合流 ───
+                const guaranteedChannels = getCustomFilterChannels('guaranteed');
+                if (guaranteedChannels.length > 0) {
+                    const guarPromises = guaranteedChannels.map(async (chId) => {
+                        const cachedIds = getCachedPlaylist(chId);
+                        if (cachedIds) return cachedIds;
+                        const uploadPlaylistId = 'UU' + chId.substring(2);
+                        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=12`;
+                        try {
+                            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                            if (res.status === 401) { handleExpiredToken(); return []; }
+                            const data = await res.json();
+                            const ids = data.items ? data.items.map(i => i.snippet?.resourceId?.videoId).filter(Boolean) : [];
+                            setCachedPlaylist(chId, ids);
+                            return ids;
+                        } catch (e) { return []; }
+                    });
+                    const guarResults = await Promise.all(guarPromises);
+                    if (authExpired) return;
+                    guarResults.forEach(ids => { allVideoIds = allVideoIds.concat(ids); });
+
+                    // ─── サイドバー表示用にチャンネル名を取得（キャッシュ付き） ───
+                    guaranteedChannelsInfo = await fetchChannelTitles(guaranteedChannels);
+                } else {
+                    guaranteedChannelsInfo = [];
+                }
+
+                renderChannelListPanel();
 
                 const pinnedIds = JSON.parse(localStorage.getItem('pinned_video_ids') || '[]');
                 allVideoIds = [...new Set([...allVideoIds, ...pinnedIds])];
@@ -886,8 +1015,8 @@
             const allBtn = document.getElementById('btn-filter-all');
             if (allBtn) {
                 allBtn.className = filterType === 'all'
-                    ? "w-full text-left text-xs px-3 py-2 rounded-lg bg-slate-900 text-slate-100 font-semibold transition"
-                    : "w-full text-left text-xs px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition font-semibold";
+                    ? "flex-grow text-left text-xs px-3 py-2 rounded-lg bg-slate-900 text-slate-100 font-semibold transition"
+                    : "flex-grow text-left text-xs px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 transition font-semibold";
             }
             const archiveBtn = document.getElementById('btn-filter-archive');
             if (archiveBtn) {
@@ -975,7 +1104,7 @@
             const watched = filtered.filter(v => viewedVideoIds.has(v.id));
 
             const clicks = JSON.parse(localStorage.getItem('channel_clicks') || '{}');
-            const frequentChannels = Object.keys(clicks).filter(title => clicks[title] >= 2);
+            const clickCountFor = (title) => clicks[title] || 0;
 
             const liveList = unviewed.filter(v => v.liveStatus === 'live');
             const upcomingList = unviewed.filter(v => {
@@ -992,20 +1121,15 @@
             const pinnedList = unviewed.filter(v => pinnedIds.has(v.id)).sort((a, b) => b.publishedAt - a.publishedAt);
             const normalUnviewed = unviewed.filter(v => v.liveStatus !== 'live' && v.liveStatus !== 'upcoming' && (currentFilter === 'archive' || !(v.wasLiveStream && !pinnedIds.has(v.id))));
 
-            const shortsList = normalUnviewed.filter(v => isShorts(v.duration)).sort((a, b) => {
-                const aFav = frequentChannels.includes(a.channelTitle) ? 1 : 0;
-                const bFav = frequentChannels.includes(b.channelTitle) ? 1 : 0;
-                if (aFav !== bFav) return bFav - aFav; 
-                return b.publishedAt - a.publishedAt; 
-            }).slice(0, 30);
-
-            const normalList = normalUnviewed.filter(v => !isShorts(v.duration));
             const favSort = (a, b) => {
-                const aFav = frequentChannels.includes(a.channelTitle) ? 1 : 0;
-                const bFav = frequentChannels.includes(b.channelTitle) ? 1 : 0;
-                if (aFav !== bFav) return bFav - aFav;
+                const diff = clickCountFor(b.channelTitle) - clickCountFor(a.channelTitle);
+                if (diff !== 0) return diff;
                 return b.publishedAt - a.publishedAt;
             };
+
+            const shortsList = normalUnviewed.filter(v => isShorts(v.duration)).sort(favSort).slice(0, 30);
+
+            const normalList = normalUnviewed.filter(v => !isShorts(v.duration));
 
             const todayList = normalList.filter(v => v.publishedAt >= oneDayAgo).sort(favSort).slice(0, 20);
             const recentList = normalList.filter(v => v.publishedAt < oneDayAgo).sort(favSort).slice(0, 30);
