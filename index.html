@@ -274,6 +274,7 @@
                                 <p class="text-[9px] text-violet-500 font-bold mb-1">保証チャンネル（上限に関わらず必ず取得）</p>
                                 <div id="channel-list-guaranteed" class="space-y-0.5 text-[10px] text-violet-300"></div>
                             </div>
+                            <div id="channel-list-excluded-reset-wrap" class="pt-1"></div>
                         </div>
                     </div>
                 </div>
@@ -600,10 +601,11 @@
 
             let videoIds = [];
             try {
+                const uploadsMap = await resolveUploadsPlaylistIds(channels);
                 const promises = channels.map(async (chId) => {
                     const cachedIds = getCachedPlaylist(chId);
                     if (cachedIds) return cachedIds;
-                    const uploadPlaylistId = 'UU' + chId.substring(2);
+                    const uploadPlaylistId = uploadsMap[chId];
                     const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=5`;
                     try {
                         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
@@ -769,6 +771,39 @@
         }
 
         // ─── チャンネルIDからチャンネル名を取得（軽量キャッシュ付き） ───
+        // ─── チャンネルIDから「アップロード動画」プレイリストIDを正式に取得（推測方式の代わり） ───
+        // 一度取得したチャンネルのプレイリストIDは変わらないため、永続的にキャッシュする
+        async function resolveUploadsPlaylistIds(channelIds) {
+            const cache = safeGetJSON('cache_uploads_playlist', {});
+            const result = {};
+            const toFetch = [];
+            channelIds.forEach(id => {
+                if (cache[id]) { result[id] = cache[id]; } else { toFetch.push(id); }
+            });
+
+            for (let i = 0; i < toFetch.length; i += 50) {
+                const chunk = toFetch.slice(i, i + 50);
+                try {
+                    const url = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${chunk.join(',')}`;
+                    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                    if (res.status === 401) { handleExpiredToken(); return result; }
+                    const data = await res.json();
+                    (data.items || []).forEach(c => {
+                        const uploads = c.contentDetails?.relatedPlaylists?.uploads;
+                        if (uploads) { result[c.id] = uploads; cache[c.id] = uploads; }
+                    });
+                } catch (e) { /* 取得できなかった分は下で推測方式にフォールバック */ }
+            }
+
+            // どうしても取得できなかったチャンネルだけ、従来の推測方式（UC→UU）にフォールバック
+            channelIds.forEach(id => {
+                if (!result[id]) result[id] = 'UU' + id.substring(2);
+            });
+
+            safeSetJSON('cache_uploads_playlist', cache);
+            return result;
+        }
+
         async function fetchChannelTitles(channelIds) {
             const cache = safeGetJSON('cache_channel_titles', {});
             const result = [];
@@ -804,6 +839,23 @@
         }
 
         // ─── サイドバーの「取得中のチャンネル」パネル ───
+        // ─── 通常チャンネルの取得除外（ブロックリスト） ───
+        function getExcludedChannelIds() {
+            return safeGetJSON('excluded_channel_ids', []);
+        }
+        function excludeChannel(channelId) {
+            const excluded = getExcludedChannelIds();
+            if (!excluded.includes(channelId)) excluded.push(channelId);
+            safeSetJSON('excluded_channel_ids', excluded);
+            refreshFeed();
+        }
+        function clearExcludedChannels() {
+            if (confirm('除外したチャンネルをすべて解除して、次回から再び取得対象に戻しますか？')) {
+                localStorage.removeItem('excluded_channel_ids');
+                refreshFeed();
+            }
+        }
+
         function toggleChannelListPanel() {
             const panel = document.getElementById('channel-list-panel');
             const icon = document.getElementById('channel-list-toggle-icon');
@@ -817,17 +869,34 @@
             const guarWrap = document.getElementById('channel-list-guaranteed');
             const guarSection = document.getElementById('channel-list-guaranteed-wrap');
             const countEl = document.getElementById('channel-list-count');
+            const excludedLinkWrap = document.getElementById('channel-list-excluded-reset-wrap');
             if (!normalWrap || !guarWrap || !countEl) return;
 
-            normalWrap.innerHTML = currentSubscribedChannelsList
-                .map(c => `<div class="truncate">${c.title}</div>`).join('') || '<div class="text-slate-700">なし</div>';
+            normalWrap.innerHTML = currentSubscribedChannelsList.map(c => `
+                <div class="flex items-center justify-between gap-1 group">
+                    <span class="truncate">${c.title}</span>
+                    <button onclick="excludeChannel('${c.id}')" class="shrink-0 text-slate-700 hover:text-red-400 px-1 leading-none transition" title="このチャンネルを今後取得しない">−</button>
+                </div>
+            `).join('') || '<div class="text-slate-700">なし</div>';
 
             if (guaranteedChannelsInfo.length > 0) {
                 guarSection.classList.remove('hidden');
-                guarWrap.innerHTML = guaranteedChannelsInfo.map(c => `<div class="truncate">＋ ${c.title}</div>`).join('');
+                guarWrap.innerHTML = guaranteedChannelsInfo.map(c => `
+                    <div class="flex items-center justify-between gap-1 group">
+                        <span class="truncate">＋ ${c.title}</span>
+                        <button onclick="removeFilterChannel('guaranteed', '${c.id}')" class="shrink-0 text-violet-700 hover:text-red-400 px-1 leading-none transition" title="保証チャンネルから削除">×</button>
+                    </div>
+                `).join('');
             } else {
                 guarSection.classList.add('hidden');
                 guarWrap.innerHTML = '';
+            }
+
+            const excludedCount = getExcludedChannelIds().length;
+            if (excludedLinkWrap) {
+                excludedLinkWrap.innerHTML = excludedCount > 0
+                    ? `<button onclick="clearExcludedChannels()" class="text-[9px] text-slate-600 hover:text-violet-400 transition">除外中のチャンネル(${excludedCount}件)をすべて解除</button>`
+                    : '';
             }
 
             countEl.textContent = `(${currentSubscribedChannelsList.length + guaranteedChannelsInfo.length}件)`;
@@ -860,6 +929,12 @@
                     setCachedSubscriptions(subItems);
                 }
 
+                // ─── 除外指定したチャンネルは取得対象から外す ───
+                const excludedIds = new Set(getExcludedChannelIds());
+                if (excludedIds.size > 0) {
+                    subItems = subItems.filter(item => !excludedIds.has(item.snippet.resourceId.channelId));
+                }
+
                 mySubscribedChannels = subItems.map(item => item.snippet?.title ? item.snippet.title.toLowerCase() : '');
                 currentSubscribedChannelsList = subItems.map(item => ({
                     id: item.snippet.resourceId.channelId,
@@ -869,6 +944,8 @@
                 statusEl.innerText = '新着動画を解析中...';
                 
                 let allVideoIds = [];
+                const mainUploadsMap = await resolveUploadsPlaylistIds(subItems.map(item => item.snippet.resourceId.channelId));
+                if (authExpired) return;
                 const fetchPromises = subItems.map(async (item) => {
                     const channelId = item.snippet.resourceId.channelId;
 
@@ -876,7 +953,7 @@
                     const cachedIds = getCachedPlaylist(channelId);
                     if (cachedIds) return cachedIds;
 
-                    const uploadPlaylistId = 'UU' + channelId.substring(2);
+                    const uploadPlaylistId = mainUploadsMap[channelId];
                     const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=12`;
                     try {
                         const res = await fetch(playlistUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
@@ -895,10 +972,12 @@
                 // ─── 上位50件に関わらず必ず取得する「保証チャンネル」も合流 ───
                 const guaranteedChannels = getCustomFilterChannels('guaranteed');
                 if (guaranteedChannels.length > 0) {
+                    const guarUploadsMap = await resolveUploadsPlaylistIds(guaranteedChannels);
+                    if (authExpired) return;
                     const guarPromises = guaranteedChannels.map(async (chId) => {
                         const cachedIds = getCachedPlaylist(chId);
                         if (cachedIds) return cachedIds;
-                        const uploadPlaylistId = 'UU' + chId.substring(2);
+                        const uploadPlaylistId = guarUploadsMap[chId];
                         const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadPlaylistId}&maxResults=12`;
                         try {
                             const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
