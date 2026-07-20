@@ -452,6 +452,48 @@
             try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
         }
 
+        // ─── ピン留めID: 毎回localStorageを解析せず、メモリ上のSetを使い回す ───
+        let pinnedIdsCache = null;
+        function getPinnedIdSet() {
+            if (!pinnedIdsCache) pinnedIdsCache = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            return pinnedIdsCache;
+        }
+        function savePinnedIdSet(set) {
+            pinnedIdsCache = set;
+            safeSetJSON('pinned_video_ids', [...set]);
+        }
+
+        // ─── ストレージの肥大化防止: 起動時に古いデータを間引く ───
+        function pruneStorage() {
+            try {
+                // 動画詳細キャッシュ: 7日以上前のエントリを削除
+                const details = safeGetJSON('cache_video_details_v2', {});
+                const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                let changed = false;
+                Object.keys(details).forEach(id => {
+                    if (!details[id] || details[id].ts < cutoff) { delete details[id]; changed = true; }
+                });
+                if (changed) safeSetJSON('cache_video_details_v2', details);
+
+                // プレイリストIDキャッシュ: 有効期限を大幅に過ぎたエントリを削除
+                const playlists = safeGetJSON('cache_playlist_ids', {});
+                const plCutoff = Date.now() - CACHE_TTL_PLAYLIST * 6;
+                let plChanged = false;
+                Object.keys(playlists).forEach(k => {
+                    if (!playlists[k] || playlists[k].ts < plCutoff) { delete playlists[k]; plChanged = true; }
+                });
+                if (plChanged) safeSetJSON('cache_playlist_ids', playlists);
+
+                // 視聴済みID: 直近2000件だけ保持（古い動画は表示対象外なので実害なし）
+                const viewed = JSON.parse(localStorage.getItem('viewed_video_ids') || '[]');
+                if (viewed.length > 2000) {
+                    const trimmed = viewed.slice(-2000);
+                    localStorage.setItem('viewed_video_ids', JSON.stringify(trimmed));
+                    viewedVideoIds = new Set(trimmed);
+                }
+            } catch (e) { /* 整理に失敗しても動作には影響させない */ }
+        }
+
         function getCachedSubscriptions() {
             const cached = safeGetJSON('cache_subscriptions', null);
             if (cached && (Date.now() - cached.ts) < CACHE_TTL_SUBS) return cached.data;
@@ -699,6 +741,7 @@
         }
 
         window.onload = function() {
+            pruneStorage();
             initTokenClient();
             renderAllFilterChannelChips();
             reconcileActiveQueue(); // 前回開いていた「まとめて見る」キューの経過分を反映
@@ -1035,7 +1078,7 @@
                 liveArchiveVideoIds = new Set();
                 liveResults.forEach(ids => ids.forEach(id => liveArchiveVideoIds.add(id)));
 
-                const pinnedIds = JSON.parse(localStorage.getItem('pinned_video_ids') || '[]');
+                const pinnedIds = [...getPinnedIdSet()];
                 allVideoIds = [...new Set([...allVideoIds, ...pinnedIds])];
 
                 statusEl.innerText = 'フィードを構築中...';
@@ -1081,6 +1124,7 @@
                 }
             });
 
+            const newlyFetched = [];
             for (let i = 0; i < idsToFetch.length; i += 50) {
                 const chunk = idsToFetch.slice(i, i + 50);
                 const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${chunk.join(',')}`;
@@ -1102,10 +1146,11 @@
                             url: `https://www.youtube.com/watch?v=${item.id}`
                         }));
                         mapped.forEach(v => resultMap.set(v.id, v));
-                        setCachedVideoDetails(mapped);
+                        newlyFetched.push(...mapped);
                     }
                 } catch (e) { console.error(e); }
             }
+            if (newlyFetched.length > 0) setCachedVideoDetails(newlyFetched); // ループ内で毎回ではなく最後に1回だけ書き込む
 
             // 元の順序を維持して返す
             return uniqueIds.map(id => resultMap.get(id)).filter(Boolean);
@@ -1219,7 +1264,7 @@
             const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
             const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
             
-            const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            const pinnedIds = getPinnedIdSet();
 
             // ─── 特化フィルター選択中は、そのフィルター専用チャンネルの動画もプールに合流 ───
             let pool = videos;
@@ -1327,7 +1372,9 @@
             if (!scrollArea || !section) return;
             if (list.length === 0) { section.classList.add('hidden'); return; }
             section.classList.remove('hidden');
-            list.forEach(v => { scrollArea.appendChild(createVideoCard(v, isLive || v.liveStatus === 'live', isWatched, isShortsGrid)); });
+            const frag = document.createDocumentFragment();
+            list.forEach(v => { frag.appendChild(createVideoCard(v, isLive || v.liveStatus === 'live', isWatched, isShortsGrid)); });
+            scrollArea.appendChild(frag);
         }
 
         // ─── 「配信予定の待機所」を時間軸タイムラインとして描画（常に24時間分固定表示）───
@@ -1422,7 +1469,7 @@
                     <div class="absolute" style="left:${x}px; top:${boxTop}px; width:${CARD_W}px; height:${BOX_H}px;">
                         <a href="${v.url}" target="_blank" onclick="watchVideo('${v.id}')" class="group relative block" style="width:${CARD_W}px;">
                             <div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black border border-sky-900/50 group-hover:border-sky-400 transition">
-                                <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
+                                <img src="${v.thumbnail}" alt="${safeTitle}" loading="lazy" decoding="async" class="w-full h-full object-cover">
                                 <span class="absolute top-1 left-1 text-[8px] font-bold bg-sky-600 text-white px-1 py-0.5 rounded">${timeLabel}〜</span>
                             </div>
                             <p class="text-[9px] text-slate-400 truncate mt-1 group-hover:text-sky-400 transition">${v.channelTitle}</p>
@@ -1431,7 +1478,7 @@
                             <div class="hidden group-hover:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50" style="width:${PREVIEW_W}px;">
                                 <div class="bg-slate-900 border border-sky-500 rounded-md overflow-hidden shadow-2xl">
                                     <div class="relative w-full aspect-video bg-black">
-                                        <img src="${v.thumbnail}" alt="${safeTitle}" class="w-full h-full object-cover">
+                                        <img src="${v.thumbnail}" alt="${safeTitle}" loading="lazy" decoding="async" class="w-full h-full object-cover">
                                         <span class="absolute top-1.5 left-1.5 text-[10px] font-bold bg-sky-600 text-white px-1.5 py-0.5 rounded">${timeLabel}〜</span>
                                     </div>
                                     <div class="p-2">
@@ -1452,8 +1499,7 @@
         function createVideoCard(video, isLive, isWatched, isShortsGrid) {
             const card = document.createElement('div');
             card.id = `video-${video.id}`;
-            const pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
-            const isPinned = pinnedIds.has(video.id);
+            const isPinned = getPinnedIdSet().has(video.id);
 
             if (isShortsGrid) {
                 card.className = `video-card bg-slate-900 rounded-md overflow-hidden flex flex-col flex-shrink-0 w-[140px] md:w-[165px] border border-slate-900/60 relative ${isWatched ? 'opacity-25 select-none' : ''}`;
@@ -1479,7 +1525,7 @@
                         <button onclick="togglePin(event, '${video.id}')" class="absolute top-2 left-2 z-20 p-1.5 rounded-lg text-[10px] transition backdrop-blur-sm ${pinBtnClass}" title="あとで見るキープ">📌</button>
                     ` : ''}
                     <a href="${video.url}" target="_blank" onclick="watchVideo('${video.id}')" class="block w-full h-full">
-                        <img src="${video.thumbnail}" alt="${video.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        <img src="${video.thumbnail}" alt="${video.title}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                         <span class="absolute bottom-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
                     </a>
                 </div>
@@ -1497,9 +1543,9 @@
         function togglePin(event, videoId) {
             event.preventDefault();
             event.stopPropagation();
-            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            const pinnedIds = getPinnedIdSet();
             if (pinnedIds.has(videoId)) { pinnedIds.delete(videoId); } else { pinnedIds.add(videoId); }
-            localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
+            savePinnedIdSet(pinnedIds);
             processAndRender(allVideosMaster);
         }
 
@@ -1592,10 +1638,10 @@
             viewedVideoIds.add(videoId);
             localStorage.setItem('viewed_video_ids', JSON.stringify([...viewedVideoIds]));
 
-            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            const pinnedIds = getPinnedIdSet();
             if (pinnedIds.has(videoId)) {
                 pinnedIds.delete(videoId);
-                localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
+                savePinnedIdSet(pinnedIds);
             }
 
             if (rerender) processAndRender(allVideosMaster);
@@ -1611,10 +1657,10 @@
             }
             if (video && video.liveStatus === 'live') return;
 
-            let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinned_video_ids') || '[]'));
+            const pinnedIds = getPinnedIdSet();
             if (pinnedIds.has(videoId)) {
                 pinnedIds.delete(videoId);
-                localStorage.setItem('pinned_video_ids', JSON.stringify([...pinnedIds]));
+                savePinnedIdSet(pinnedIds);
             }
 
             if (viewedVideoIds.has(videoId)) return;
@@ -1631,13 +1677,17 @@
             }
         }
 
+        let filterDebounceTimer = null;
         function filterVideos() {
-            const query = document.getElementById('filter-search').value.toLowerCase();
-            if (!query) { processAndRender(allVideosMaster); return; }
-            const filtered = allVideosMaster.filter(video => {
-                return video.title.toLowerCase().includes(query) || video.channelTitle.toLowerCase().includes(query);
-            });
-            processAndRender(filtered);
+            clearTimeout(filterDebounceTimer);
+            filterDebounceTimer = setTimeout(() => {
+                const query = document.getElementById('filter-search').value.toLowerCase();
+                if (!query) { processAndRender(allVideosMaster); return; }
+                const filtered = allVideosMaster.filter(video => {
+                    return video.title.toLowerCase().includes(query) || video.channelTitle.toLowerCase().includes(query);
+                });
+                processAndRender(filtered);
+            }, 200);
         }
 
         function clearAllGrids() {
@@ -1658,7 +1708,7 @@
         }
         function resetPinnedList() {
             if (confirm('「あとで見るキープ」のピン留めをすべて一括解除しますか？')) {
-                localStorage.removeItem('pinned_video_ids');
+                savePinnedIdSet(new Set());
                 processAndRender(allVideosMaster);
             }
         }
