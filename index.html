@@ -409,7 +409,7 @@
         const CACHE_TTL_SUBS = 6 * 60 * 60 * 1000;       // 登録チャンネル一覧: 6時間
         const CACHE_TTL_PLAYLIST = 10 * 60 * 1000;       // 各チャンネルの新着ID一覧: 10分
         const CACHE_TTL_VIDEO_LIVE = 5 * 60 * 1000;      // ライブ/配信予定の動画詳細: 5分
-        const CACHE_TTL_VIDEO_NORMAL = 12 * 60 * 60 * 1000; // 通常動画の詳細: 12時間
+        const CACHE_TTL_VIDEO_NORMAL = 24 * 60 * 60 * 1000; // 通常動画の詳細: 24時間
 
         function safeGetJSON(key, fallback) {
             try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; }
@@ -749,14 +749,16 @@
                 if (!subItems) {
                     subItems = [];
                     let pageToken = '';
+                    const SUB_LIMIT = 50; // 関連性の高い順に、上位50件までに絞る
                     do {
-                        const subUrl = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50${pageToken ? `&pageToken=${pageToken}` : ''}`;
+                        const subUrl = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&order=relevance&maxResults=50${pageToken ? `&pageToken=${pageToken}` : ''}`;
                         const subRes = await fetch(subUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
                         if (subRes.status === 401) { handleExpiredToken(); return; }
                         const subData = await subRes.json();
                         if (subData.items) subItems = subItems.concat(subData.items);
                         pageToken = subData.nextPageToken || '';
-                    } while (pageToken);
+                    } while (pageToken && subItems.length < SUB_LIMIT);
+                    subItems = subItems.slice(0, SUB_LIMIT);
 
                     if (subItems.length === 0) { statusEl.innerText = 'チャンネルが見つかりません。'; return; }
                     setCachedSubscriptions(subItems);
@@ -976,11 +978,12 @@
             const frequentChannels = Object.keys(clicks).filter(title => clicks[title] >= 2);
 
             const liveList = unviewed.filter(v => v.liveStatus === 'live');
-            const STALE_UPCOMING_MS = 3 * 60 * 60 * 1000; // 予定時刻から3時間以上経過したら「終了済み/中止」とみなす
-            const upcomingList = unviewed.filter(v =>
-                v.liveStatus === 'upcoming' &&
-                (!v.scheduledStartTime || (now - v.scheduledStartTime) < STALE_UPCOMING_MS)
-            ).sort((a, b) => {
+            const upcomingList = unviewed.filter(v => {
+                if (v.liveStatus !== 'upcoming') return false;
+                const refTime = v.scheduledStartTime || v.publishedAt; // 予定時刻が無い場合は公開日時で代用
+                if (!refTime) return true;
+                return refTime >= now; // 現在時刻より前のものは表示しない
+            }).sort((a, b) => {
                 if (!a.scheduledStartTime) return 1;
                 if (!b.scheduledStartTime) return -1;
                 return a.scheduledStartTime - b.scheduledStartTime;
@@ -994,7 +997,7 @@
                 const bFav = frequentChannels.includes(b.channelTitle) ? 1 : 0;
                 if (aFav !== bFav) return bFav - aFav; 
                 return b.publishedAt - a.publishedAt; 
-            });
+            }).slice(0, 30);
 
             const normalList = normalUnviewed.filter(v => !isShorts(v.duration));
             const favSort = (a, b) => {
@@ -1004,8 +1007,8 @@
                 return b.publishedAt - a.publishedAt;
             };
 
-            const todayList = normalList.filter(v => v.publishedAt >= oneDayAgo).sort(favSort);
-            const recentList = normalList.filter(v => v.publishedAt < oneDayAgo).sort(favSort);
+            const todayList = normalList.filter(v => v.publishedAt >= oneDayAgo).sort(favSort).slice(0, 20);
+            const recentList = normalList.filter(v => v.publishedAt < oneDayAgo).sort(favSort).slice(0, 30);
             const watchedList = watched.sort((a,b)=>b.publishedAt-a.publishedAt);
 
             renderSection('live', liveList, true, false);
